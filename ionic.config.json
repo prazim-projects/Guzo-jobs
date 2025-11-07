@@ -1,0 +1,7 @@
+{
+  "name": "travelNotes",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite"
+}
