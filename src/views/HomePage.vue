@@ -1,14 +1,8 @@
 <template>
   <ion-page>
-    <ion-header translucent>
-      <ion-toolbar color="primary">
-        <ion-title>GeoNotes</ion-title>
-      </ion-toolbar>
-    </ion-header>
-
+    <appHeader />
     
-    <!-- Content -->
-    <ion-content fullscreen>
+    <ion-content >
       <div class="hero ion-padding">
         <h1 class="title">Welcome to Your Travel Diary 🌍</h1>
         <p class="subtitle">Capture places, memories, and moments. Share, interact, route publish</p>
@@ -35,27 +29,33 @@
               <ion-card-content>
                 {{ note.description }}
               </ion-card-content>
+              <ion-card-subtitle>
+                Likes: {{ likes }}
+              </ion-card-subtitle>
+              <ion-card-content>
+              <ion-buttons slot="end">
+                <ion-button
+                  v-for="action in actions"
+                  :key="action.name"
+                  @click="action.onClick">
+                  <ion-icon :name="action.icon"></ion-icon>
+                </ion-button>
+              </ion-buttons>
+            </ion-card-content>
             </ion-card>
           </ion-col>
         </ion-row>
       </ion-grid>
-
-      <!-- Floating Action Button -->
-      <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button color="tertiary" @click="goToAddNote">
-          <ion-icon name="add"></ion-icon>
-        </ion-fab-button>
-      </ion-fab>
     </ion-content>
+    <floatingPostButton class="fbutton" />
   </ion-page>
 </template>
 
 <script lang="ts" setup>
+import floatingPostButton from '@/components/floatingPostButton.vue'
+import AppHeader from '@/components/appFoot.vue'
 import {
   IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
   IonCard,
   IonCardHeader,
@@ -63,14 +63,16 @@ import {
   IonCardSubtitle,
   IonCardContent,
   IonGrid,
-  IonRow,
+  IonRow, 
   IonCol,
-  IonFab,
-  IonFabButton,
   IonIcon,
+  IonButton,
+  IonButtons
 } from '@ionic/vue'
 import { useRouter } from 'vue-router'
-import { images, square, triangle } from 'ionicons/icons';
+import appHeader from '@/components/appFoot.vue'
+import { ref } from 'vue'
+import { add } from 'ionicons/icons'
 
 // Mock demo data
 interface Note {
@@ -81,6 +83,19 @@ interface Note {
   location: string
 }
 
+const actions = [
+  { name: "like", icon: "heart", onClick: () => addLike() },
+  { name: "comment", icon: "chatbubble", onClick: () => console.log("Comment") },
+  { name: "share", icon: "share", onClick: () => console.log("Shared!") },
+  {name: "route", icon: "compass", onClick: () => console.log("Route!") },
+];
+
+const likes = ref(0);
+
+function addLike() {
+  likes.value += 1;
+}
+
 const demoNotes: Note[] = [
   {
     id: 1,
@@ -88,6 +103,7 @@ const demoNotes: Note[] = [
     description: 'Explored Entoto Mountains and had the best coffee.',
     image: 'https://picsum.photos/seed/addis/400/250',
     location: 'Addis Ababa, Ethiopia',
+    
   },
   {
     id: 2,
@@ -122,6 +138,14 @@ function openNote(note: Note) {
 .subtitle {
   font-size: 1rem;
   color: var(--ion-color-medium);
+}
+
+.fbutton {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  padding-bottom: 30px;
 }
 ion-card {
   transition: transform 0.2s ease;

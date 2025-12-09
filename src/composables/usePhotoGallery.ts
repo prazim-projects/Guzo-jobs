@@ -25,8 +25,19 @@ export const usePhotoGallery = () => {
 
     //  Whenever the array is modified (taking or deleting photos)
     //  trigger the cachePhotos
-    watch(photos, cachePhotos, { deep: true });
 
+
+    const takePhoto = async () => {
+        const photo = await Camera.getPhoto({
+            resultType: CameraResultType.Uri,
+            source: CameraSource.Camera,
+            quality: 100,
+        });
+    
+
+    const fileName = Date.now() + '.jpeg';
+    const savedFileImage = await savePicture(photo, fileName)
+    
     const loadSaved = async () => {
         const photoList = await Preferences.get({ key: PHOTO_STORAGE });
         const photosInPreferences = photoList.value ? JSON.parse(photoList.value) : [];
@@ -39,23 +50,11 @@ export const usePhotoGallery = () => {
         
         photo.webviewPath = `data:image/jpeg;base64,${file.data}`;
     } 
-
-        photos.value = photosInPreferences;
+    photos.value = photosInPreferences;
     };
 
-
+    watch(photos, cachePhotos, { deep: true });
     onMounted(loadSaved);
-
-    const takePhoto = async () => {
-        const photo = await Camera.getPhoto({
-            resultType: CameraResultType.Uri,
-            source: CameraSource.Camera,
-            quality: 100,
-        });
-    
-
-    const fileName = Date.now() + '.jpeg';
-    const savedFileImage = await savePicture(photo, fileName)
 
     photos.value = [savedFileImage, ...photos.value];
   };
