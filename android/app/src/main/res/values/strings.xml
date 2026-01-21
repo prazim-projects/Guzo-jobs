@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">travelNotes</string>
     <string name="title_activity_main">travelNotes</string>
-    <string name="package_name">io.ionic.starter</string>
-    <string name="custom_url_scheme">io.ionic.starter</string>
+    <string name="package_name">com.leab.android</string>
+    <string name="custom_url_scheme">com.leab.android</string>
 </resources>

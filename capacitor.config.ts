@@ -1,9 +1,10 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
+  appId: 'com.leab.android',
   appName: 'travelNotes',
-  webDir: 'dist'
+  webDir: 'dist',
+  // bundledWebRuntime: false
 };
 
 export default config;
