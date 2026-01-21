@@ -30,3 +30,15 @@ npm-debug.log*
 /platforms
 /plugins
 /www
+\guzo-jobs-back/__pycache__/
+\guzo-jobs-back/*.pyc
+\guzo-jobs-back/guzo_jobs_backend/__pycache__/
+\guzo-jobs-back/guzo_jobs_backend/*.pyc
+\guzo-jobs-back/api/__pycache__/
+\guzo-jobs-back/api/*.pyc
+\guzo-jobs-back/db.sqlite3
+\guzo-jobs-back/.env
+\guzo-jobs-back/api/
+android/.idea/*
+android/.gradle/*
+android/app/*
