@@ -1,56 +1,48 @@
 <template>
-  <ion-Footer translucent padding>
-    <ion-toolbar color="primary">
-
-      <ion-buttons slot="start">
-        <ion-button @click="goHome">
-          <ion-icon name="home"></ion-icon>
-        </ion-button>
-      </ion-buttons>
-
-      <!-- <ion-title>GuzoMezgeb</ion-title> -->
-
-      <ion-buttons slot="end">
-        <ion-button @click="goProfile">
-          <ion-icon name="contract"></ion-icon>
-        </ion-button>
-         <ion-button @click="mapET()">
-          <ion-icon name="pin"></ion-icon>
-        </ion-button>
-
-      </ion-buttons>
-
-
-    </ion-toolbar>
-  </ion-Footer>
+  <ion-toolbar slot="bottom" color="primary">
+    <ion-buttons slot="primary">
+      <ion-button
+        v-for="(route, index) in routes"
+        :key="index"
+        :router-link="route.path"
+        fill="clear"
+      >
+        <ion-icon v-if="route.icon" :icon="route.icon" slot="icon-only" />
+        <ion-label v-if="!route.icon">{{ route.label }}</ion-label> <!-- Optional: Show label if no icon -->
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import {  IonFooter,
-  IonToolbar,
-  IonTitle,
-  IonButtons,
-  IonButton,
-  IonIcon }
-from '@ionic/vue';
+import { IonToolbar, IonButtons, IonButton, IonIcon, IonLabel } from '@ionic/vue';
 
-const router = useRouter();
-
-function goHome() {
-  router.push('/home');
+interface RouteItem {
+  path: string;
+  label: string;
+  icon?: string;
 }
 
-function mapET() {
-  router.push('/mapET');
-}
-
-function goToAddNote() {
-  router.push('/add');
-}   
-
-function goProfile() {
-  router.push('/profile');
-}
+defineProps<{
+  routes: RouteItem[];
+}>();
 </script>
-<style scoped></style>
+
+<style scoped>
+/* Make it look like tabs: Even spacing, etc. */
+ion-toolbar {
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+ion-buttons {
+  justify-content: space-around;
+  width: 100%;
+}
+
+ion-button {
+  flex: 1;
+  --color: var(--ion-color-contrast);
+  --color-activated: var(--ion-color-light);
+}
+</style>

@@ -1,10 +1,11 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router';
-
+import { createPinia} from 'pinia';
 import { IonicVue } from '@ionic/vue';
-
+// import { ApolloClient } from '@apollo/client';
 import { defineCustomElements } from '@ionic/pwa-elements/loader'
+
 defineCustomElements(window);
 
 /* Core CSS required for Ionic components to work properly */
@@ -16,7 +17,7 @@ import '@ionic/vue/css/structure.css';
 import '@ionic/vue/css/typography.css';
 
 import { addIcons } from 'ionicons';
-import { chatbubble, compass,  share, contract, home, add, remove, pin, heart } from 'ionicons/icons';
+import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline } from 'ionicons/icons';
 addIcons({
   compass,
   add,
@@ -26,7 +27,14 @@ addIcons({
   contract,
   heart,
   chatbubble,
-  share
+  share,
+  homeOutline,
+  mapOutline,
+  personAddOutline,
+  personCircleOutline,
+  addCircleOutline,
+  logInOutline
+
 })
 
 /* Optional CSS utils that can be commented out */
@@ -50,10 +58,13 @@ import '@ionic/vue/css/palettes/dark.always.css';
 
 /* Theme variables */
 import './theme/variables.css';
+import { apolloPlugin } from './plugins/apollo';
+
+const pinia = createPinia();
 
 const app = createApp(App)
   .use(IonicVue)
-  .use(router);
+  .use(router).use(pinia).use(apolloPlugin);
 
 router.isReady().then(() => {
   app.mount('#app');

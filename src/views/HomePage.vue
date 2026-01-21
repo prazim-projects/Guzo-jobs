@@ -1,11 +1,13 @@
 <template>
   <ion-page>
-    <appHeader />
     
     <ion-content >
-      <div class="hero ion-padding">
-        <h1 class="title">Welcome to Your Travel Diary 🌍</h1>
-        <p class="subtitle">Capture places, memories, and moments. Share, interact, route publish</p>
+    
+      <div>
+        <div class="hero ion-padding">
+        <h1 class="title">Welcome to Guzo Jobs 🌍</h1>
+        <p class="subtitle">Odd job for travellers!</p>
+        </div>
       </div>
 
       <!-- Notes List -->
@@ -23,15 +25,12 @@
               <ion-card-header>
                 <ion-card-title>{{ note.title }}</ion-card-title>
                 <ion-card-subtitle>
-                  {{ note.location }}
+                  Origin Location: {{ note.origin }}
                 </ion-card-subtitle>
               </ion-card-header>
               <ion-card-content>
-                {{ note.description }}
+                Going TO: {{ note.destination }}
               </ion-card-content>
-              <ion-card-subtitle>
-                Likes: {{ likes }}
-              </ion-card-subtitle>
               <ion-card-content>
               <ion-buttons slot="end">
                 <ion-button
@@ -48,6 +47,8 @@
       </ion-grid>
     </ion-content>
     <floatingPostButton class="fbutton" />
+    
+    <appHeader :routes="navRoutes" :show-menu="true" />
   </ion-page>
 </template>
 
@@ -70,47 +71,53 @@ import {
   IonButtons
 } from '@ionic/vue'
 import { useRouter } from 'vue-router'
-import appHeader from '@/components/appFoot.vue'
-import { ref } from 'vue'
 import { add } from 'ionicons/icons'
+import { icon } from 'leaflet'
+
+
 
 // Mock demo data
 interface Note {
   id: number
   title: string
-  description: string
+  origin: string
+  destination: string
   image: string
-  location: string
+  
 }
 
+const navRoutes = [
+  { path: '/', label: 'Home', icon: 'home-outline' },
+  { path: '/add', label: 'Add Note', icon: 'add' },
+  { path: '/login', label: 'Login', icon: 'log-in-outline' },
+  { path: '/profile', label: 'Profile', icon: 'person-circle-outline' },
+  { path: '/mapET', label: 'Map ET', icon: 'map-outline' },
+  { path: '/signup', label: 'Signup', icon: 'person-add-outline' },
+];
+
 const actions = [
-  { name: "like", icon: "heart", onClick: () => addLike() },
-  { name: "comment", icon: "chatbubble", onClick: () => console.log("Comment") },
+   { name: "comment", icon: "chatbubble", onClick: () => console.log("Comment") },
   { name: "share", icon: "share", onClick: () => console.log("Shared!") },
   {name: "route", icon: "compass", onClick: () => console.log("Route!") },
 ];
 
-const likes = ref(0);
-
-function addLike() {
-  likes.value += 1;
-}
 
 const demoNotes: Note[] = [
   {
     id: 1,
-    title: 'Addis Ababa Adventure',
-    description: 'Explored Entoto Mountains and had the best coffee.',
-    image: 'https://picsum.photos/seed/addis/400/250',
-    location: 'Addis Ababa, Ethiopia',
+    title: 'Going to Addis Ababa from Adama',
+    origin: 'Adama',
+    destination: 'Addis Ababa',
+    image: 'https://picsum.photos/seed/mojo/400/250',
     
   },
   {
     id: 2,
-    title: 'Blue Nile Falls',
-    description: 'Got drenched but it was worth it!',
-    image: 'https://picsum.photos/seed/bahirdar/400/250',
-    location: 'Bahir Dar, Ethiopia',
+    title: 'Going to Gondar, from Dessie, I can deliver small items',
+    origin: 'Dessie',
+    destination: 'Gondar',
+    image: 'https://picsum.photos/seed/amhara/400/250',
+
   },
 ]
 

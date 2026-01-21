@@ -19,6 +19,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/NotePage.vue')
   },
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/login.vue')
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: ProfilePage
@@ -28,7 +33,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'MapET',
     component: () => import('../views/MapPage.vue')
 
-  }
+  },
+  {
+    path: '/signup',
+    name: 'Signup',
+    component: () => import('@/views/register.vue')
+  },
 
 ]
 
