@@ -31,6 +31,8 @@ npm run dev
 ### Backend - Django Graphql API app contributors
 
 ```bash
+#0. Create .env file
+create env file with SECRET_KEY, DEBUG, ALLOWED_HOSTS, and CORS_ALLOWED_ORIGINS variables
 # 1. Navigate to backend
 cd guzo-jobs-back
 
