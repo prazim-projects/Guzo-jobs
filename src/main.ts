@@ -3,8 +3,11 @@ import App from './App.vue'
 import router from './router';
 import { createPinia} from 'pinia';
 import { IonicVue } from '@ionic/vue';
-// import { ApolloClient } from '@apollo/client';
 import { defineCustomElements } from '@ionic/pwa-elements/loader'
+// Apollo Client
+import { DefaultApolloClient } from '@vue/apollo-composable';
+import ApolloClient from './apollo-client';
+
 
 defineCustomElements(window);
 
@@ -58,13 +61,16 @@ import '@ionic/vue/css/palettes/dark.always.css';
 
 /* Theme variables */
 import './theme/variables.css';
-import { apolloPlugin } from './plugins/apollo';
+
+
 
 const pinia = createPinia();
 
 const app = createApp(App)
   .use(IonicVue)
-  .use(router).use(pinia).use(apolloPlugin);
+  .use(router).use(pinia)
+
+app.provide(DefaultApolloClient, ApolloClient);
 
 router.isReady().then(() => {
   app.mount('#app');

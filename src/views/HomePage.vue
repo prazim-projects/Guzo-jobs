@@ -45,6 +45,18 @@
           </ion-col>
         </ion-row>
       </ion-grid>
+      <ion-list v-if="data">
+        <ion-item v-for="job in data.allJobs" :key="job.id">
+          <ion-label>
+            <h2>{{ job.title }}</h2>
+            <p>{{ job.description }}</p>
+<!--          <p>Posted by: {{ job.user.username }} ({{ job.user.email }})</p> -->
+            <p>Expires: {{ job.expiresAt }}</p>
+          </ion-label>
+        </ion-item>
+      </ion-list>
+      <ion-text v-if="loading">Loading...</ion-text>
+      <ion-text v-if="error">Error: {{ error.message }}</ion-text>
     </ion-content>
     <floatingPostButton class="fbutton" />
     
@@ -55,6 +67,9 @@
 <script lang="ts" setup>
 import floatingPostButton from '@/components/floatingPostButton.vue'
 import AppHeader from '@/components/appFoot.vue'
+import { gql } from '@apollo/client/core'
+import { useApolloClient } from '@vue/apollo-composable'
+import { useQuery } from '@vue/apollo-composable'
 import {
   IonPage,
   IonContent,
@@ -67,14 +82,37 @@ import {
   IonRow, 
   IonCol,
   IonIcon,
+  IonText,
   IonButton,
-  IonButtons
+  IonButtons,
+  IonList,
+  IonItem,
+
 } from '@ionic/vue'
+
 import { useRouter } from 'vue-router'
-import { add } from 'ionicons/icons'
-import { icon } from 'leaflet'
 
+// export interface User {
+//   bio: string;
+//   email: string;
+//   id: string;
+//   username: string;
+// }
 
+export interface Job {
+  description: string;
+  expiresAt: string; // Or Date if you parse it
+  id: string;
+  title: string;
+  // user: User;
+  postType: string;
+  origin: string;
+  destination: string;
+}
+
+export interface AllJobsQuery {
+  allJobs: Job[];
+}
 
 // Mock demo data
 interface Note {
@@ -123,13 +161,46 @@ const demoNotes: Note[] = [
 
 const router = useRouter()
 
-function goToAddNote() {
-  router.push('/add')
-}
-
 function openNote(note: Note) {
   console.log('Opening note:', note)
 }
+
+
+// const user_query = gql`
+//   query GetUser($id: ID!) {
+//     user {
+//         bio
+//         email
+//         id
+//         username
+//       }
+//   }
+// `;
+// GraphQL query to fetch jobs
+const JOB_QUERY = gql`
+  query MyQuery {
+    allJobs {
+      description
+      expiresAt
+      id
+      title
+      postType
+      origin
+      destination
+    }
+  }
+`;
+
+//  Typed Query Execution
+const { result, loading, error } = useQuery<AllJobsQuery>(JOB_QUERY);
+
+// Debug line to check client
+const { client } = useApolloClient();
+console.log('Apollo Client:', client);
+console.log('watchQuery exists?', typeof client?.watchQuery === 'function');
+const data = result;
+
+
 </script>
 
 <style scoped>

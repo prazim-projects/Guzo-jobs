@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@apollo/client": "^3.14.0",
     "@capacitor-community/sqlite": "^7.0.2",
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "7.1.0",
@@ -29,7 +30,9 @@
     "@ionic/vue": "^8.7.11",
     "@ionic/vue-router": "^8.7.11",
     "@vue/apollo-composable": "^4.2.2",
+    "dotenv": "^17.2.3",
     "graphql": "^16.12.0",
+    "graphql-tag": "^2.12.6",
     "ionicons": "^7.4.0",
     "leaflet": "^1.9.4",
     "pinia": "^3.0.4",

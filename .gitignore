@@ -35,9 +35,14 @@ npm-debug.log*
 \guzo-jobs-back/guzo_jobs_backend/__pycache__/
 \guzo-jobs-back/guzo_jobs_backend/*.pyc
 \guzo-jobs-back/api/__pycache__/
+\guzo-jobs-back/api/
+guzo-jobs-back/api/migrations
 \guzo-jobs-back/api/*.pyc
+\guzo-jobs-back/api.zip
 \guzo-jobs-back/db.sqlite3
 \guzo-jobs-back/.env
 android/.idea/*
 android/.gradle/*
 android/app/*
+\src\vite-env.d.ts
+.env
