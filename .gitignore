@@ -38,7 +38,6 @@ npm-debug.log*
 \guzo-jobs-back/api/*.pyc
 \guzo-jobs-back/db.sqlite3
 \guzo-jobs-back/.env
-
 android/.idea/*
 android/.gradle/*
 android/app/*
