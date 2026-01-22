@@ -1,4 +1,4 @@
-# Project Name: [YourAppName] – Ionic Vue PWA + Django Graphene GraphQL
+# Project Name: [Guzo-Jobs] – Ionic Vue PWA + Django Graphene GraphQL
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/django-4.x%2B-green)](https://www.djangoproject.com/)
