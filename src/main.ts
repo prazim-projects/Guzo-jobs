@@ -8,7 +8,6 @@ import { defineCustomElements } from '@ionic/pwa-elements/loader'
 import { DefaultApolloClient } from '@vue/apollo-composable';
 import ApolloClient from './apollo-client';
 
-
 defineCustomElements(window);
 
 /* Core CSS required for Ionic components to work properly */
@@ -20,7 +19,7 @@ import '@ionic/vue/css/structure.css';
 import '@ionic/vue/css/typography.css';
 
 import { addIcons } from 'ionicons';
-import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline } from 'ionicons/icons';
+import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline, alertCircleOutline, locationOutline, timeOutline, logOutOutline } from 'ionicons/icons';
 addIcons({
   compass,
   add,
@@ -36,8 +35,11 @@ addIcons({
   personAddOutline,
   personCircleOutline,
   addCircleOutline,
-  logInOutline
-
+  logInOutline,
+  alertCircleOutline,
+  locationOutline,
+  timeOutline,
+  logOutOutline
 })
 
 /* Optional CSS utils that can be commented out */
@@ -61,7 +63,6 @@ import '@ionic/vue/css/palettes/dark.always.css';
 
 /* Theme variables */
 import './theme/variables.css';
-
 
 
 const pinia = createPinia();

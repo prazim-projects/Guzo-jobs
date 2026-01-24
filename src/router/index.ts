@@ -1,50 +1,42 @@
-import { createRouter, createWebHistory } from '@ionic/vue-router';
-import { RouteRecordRaw } from 'vue-router';
-import HomePage from '../views/HomePage.vue'
-import ProfilePage from '@/views/ProfilePage.vue';
+// src/router/index.ts
+import { createRouter, createWebHistory } from '@ionic/vue-router'
+import { RouteRecordRaw } from 'vue-router'
+import { useAuthStore } from '@/stores/userStore';
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    redirect: '/home'
+    component: () => import('@/App.vue'),  // tabs wrapper
+    children: [
+      { path: '', redirect: '/home' },
+      { path: 'home', component: () => import('@/views/HomePage.vue') },
+      { path: 'add', component: () => import('@/views/NotePage.vue'), meta: { requiresAuth: true } },
+      { path: 'login', component: () => import('@/views/login.vue') },
+      { path: 'signup', component: () => import('@/views/register.vue') },
+      { path: 'profile', component: () => import('@/views/ProfilePage.vue'), meta: { requiresAuth: true } },
+      { path: 'mapET', component: () => import('@/views/MapPage.vue'), meta: { requiresAuth: true } },
+      {path: 'logout', component: () => import('@/views/logout.vue'), meta: { requiresAuth: true } },
+      {path: 'postJob', component: () => import('@/views/createJobPost.vue'), meta: { requiresAuth: true } },
+    ]
   },
-  {
-    path: '/home',
-    name: 'Home',
-    component: HomePage
-  },
-  {
-    path: '/add',
-    name: 'AddNote',
-    component: () => import('../views/NotePage.vue')
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('../views/login.vue')
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: ProfilePage
-  },
-  {
-    path: '/mapET',
-    name: 'MapET',
-    component: () => import('../views/MapPage.vue')
-
-  },
-  {
-    path: '/signup',
-    name: 'Signup',
-    component: () => import('@/views/register.vue')
-  },
-
-]
+];
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
+
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const userStore = useAuthStore();
+  const isAuthenticated = userStore.isAuthenticated; 
+
+  if (requiresAuth && !isAuthenticated) {
+    // Redirect unauthenticated users to login page
+    next({ path: '/login' });
+  } else {
+    next();
+  }
+});
 
 export default router

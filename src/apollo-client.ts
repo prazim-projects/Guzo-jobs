@@ -1,5 +1,6 @@
 import { ApolloClient, InMemoryCache, HttpLink, DefaultOptions } from '@apollo/client/core';
 import { setContext } from '@apollo/client/link/context';
+import Cookies from 'js-cookie';
 
 // Optional: Define default options type if you customize (e.g., for fetchPolicy)
 const defaultOptions: DefaultOptions = {
@@ -21,15 +22,30 @@ if (!graphqlEndpoint) {
 
 const httpLink = new HttpLink({
   uri: graphqlEndpoint,
-  // headers: { Authorization: `Bearer ${import.meta.env.VITE_API_KEY as string}` }
+  credentials: 'include',
+  // headers: { 'X-CSRFToken': Cookies.get('csrftoken') || '' },
 });
 
-// const authLink = setContext()
+const getDjangoCsrfToken = () => Cookies.get('csrftoken') || '';
+
+
+const authLink = setContext((_, { headers }) => {
+  const csrfToken = getDjangoCsrfToken();
+  const token = localStorage.getItem('authToken');
+  return {
+    headers: {
+      ...headers,
+      Authorization: token ? `Bearer ${token}` : '',
+      'X-CSRFToken': csrfToken, 
+ 
+    },
+  };
+});
 
 const cache = new InMemoryCache();
 
 const apolloClient = new ApolloClient({
-  link: httpLink,
+  link: authLink.concat(httpLink),
   cache,
   defaultOptions, // for better type inference in queries
 });

@@ -20,8 +20,8 @@
           </ion-item>
 
           <ion-item>
-            <ion-label position="floating">Email</ion-label>
-            <ion-input v-model="user.email" type="email" required></ion-input>
+            <ion-label position="floating">Phone Number</ion-label>
+            <ion-input v-model="user.phone_number" type="tel" placeholder="+251"required></ion-input>
           </ion-item>
 
           <ion-item>
@@ -43,16 +43,13 @@
       </ion-card>
     </ion-content>
 
-    <ion-footer>
-      <app-foot :routes="navRoutes" />
-    </ion-footer>
   </ion-page>
 </template>
 
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useUserStore } from '@/stores/userStore'; // Assuming this is your Pinia store
+import { useAuthStore } from '@/stores/userStore'; // Assuming this is your Pinia store
 import {
   IonPage,
   IonHeader,
@@ -68,12 +65,10 @@ import {
   IonLabel,
   IonInput,
   IonButton,
-  IonFooter,
 } from '@ionic/vue';
-import AppFoot from '@/components/appFoot.vue'; // Your footer component
 
 const router = useRouter();
-const userStore = useUserStore();
+const userStore = useAuthStore();
 
 const navRoutes = [
   { path: '/', label: 'Home', icon: 'home-outline' },
@@ -86,25 +81,34 @@ const navRoutes = [
 
 const user = ref({
   username: '',
-  email: '',
+  phone_number: '',
   password: '',
   confirmPassword: '',
 });
 
-// const handleSignup = () => {
-//   if (user.value.username && user.value.email && user.value.password && user.value.password === user.value.confirmPassword) {
-//     userStore.register({ username: user.value.username, email: user.value.email, password: user.value.password });
-//     router.push('/login'); // Redirect to login after simulated signup
-//   } else {
-//     // Optional: Add toast or alert for validation
-//     console.warn('Please fill in all fields correctly');
-//   }
-// };
+const handleSignup = async () => {
+  try {
+    await userStore.register(
+      user.value.username,
+      user.value.phone_number,
+      user.value.password,
+    );
+    router.push('/profile')
+  } catch (err) {
+    console.error(err);
+  }
+};
 </script>
 
 <style scoped>
 ion-card {
   max-width: 400px;
   margin: 0 auto;
+}
+ion-item {
+  height: fit-content;
+}
+ion-input {
+  margin-top: 15px;
 }
 </style>

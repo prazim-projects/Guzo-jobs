@@ -1,75 +1,86 @@
 <template>
   <ion-page>
-    
     <ion-content >
-    
-      <div>
+      <ion-refresher slot="fixed" @ionRefresh="doRefresh($event)">
+        <ion-refresher-content 
+          pulling-text="Pull to refresh" 
+          refreshing-spinner="circles"
+          refreshing-text="Updating data...">
+        </ion-refresher-content>
+      </ion-refresher>
+      <div class="ion-padding">
         <div class="hero ion-padding">
         <h1 class="title">Welcome to Guzo Jobs 🌍</h1>
         <p class="subtitle">Odd job for travellers!</p>
         </div>
       </div>
 
-      <!-- Notes List -->
-      <ion-grid>
+      <!-- Jobs List -->
+      <ion-grid v-if="!loading && !error && result?.allJobs?.length">
         <ion-row>
           <ion-col
             size="12"
             size-md="6"
             size-sm="4"
-            v-for="note in demoNotes"
-            :key="note.id"
-          >
-            <ion-card @click="openNote(note)">
-              <img :src="note.image" alt="Note Image" width="200px" />
+            v-for="job in result.allJobs">
+            <ion-card class="job-card">
+
+              <!-- Dynamic Picsum image based on destination -->
+              <img
+                :src="`https://picsum.photos/seed/${encodeURIComponent(job.destination)}/500/300`"
+                alt="Image for trip to {{ job.destination }}"
+                class="card-image"
+               
+              />
+
               <ion-card-header>
-                <ion-card-title>{{ note.title }}</ion-card-title>
+                <ion-card-title>{{ job.description.substring(0, 60) + '...' }}</ion-card-title>
                 <ion-card-subtitle>
-                  Origin Location: {{ note.origin }}
+                  <ion-icon name="location-outline" size="small"></ion-icon>
+                    Origin Location: {{ job.origin }}
                 </ion-card-subtitle>
               </ion-card-header>
+
               <ion-card-content>
-                Going TO: {{ note.destination }}
+                <p><strong>Going To:</strong> {{ job.destination }}</p>
+                <p v-if="job.expiresAt">
+                  <ion-icon name="time-outline" size="small"></ion-icon>
+                  Expires: {{ formatDate(job.expiresAt) }}
+                </p>
               </ion-card-content>
-              <ion-card-content>
-              <ion-buttons slot="end">
-                <ion-button
-                  v-for="action in actions"
-                  :key="action.name"
-                  @click="action.onClick">
-                  <ion-icon :name="action.icon"></ion-icon>
-                </ion-button>
-              </ion-buttons>
-            </ion-card-content>
+
+              <ion-card-content class="ion-text-end">
+                <ion-buttons>
+                  <ion-button
+                    v-for="action in actions"
+                    :key="action.name"
+                    fill="clear"
+                    size="small"
+                    @click="action.onClick()"
+                  >
+                    <ion-icon :name="action.icon"></ion-icon>
+                  </ion-button>
+                </ion-buttons>
+              </ion-card-content>
+
             </ion-card>
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-      <ion-list v-if="data">
-        <ion-item v-for="job in data.allJobs" :key="job.id">
-          <ion-label>
-            <h2>{{ job.title }}</h2>
-            <p>{{ job.description }}</p>
-<!--          <p>Posted by: {{ job.user.username }} ({{ job.user.email }})</p> -->
-            <p>Expires: {{ job.expiresAt }}</p>
-          </ion-label>
-        </ion-item>
-      </ion-list>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
       <ion-text v-if="loading">Loading...</ion-text>
       <ion-text v-if="error">Error: {{ error.message }}</ion-text>
     </ion-content>
-    <floatingPostButton class="fbutton" />
+    <!-- <floatingPostButton class="fbutton" @on-click="router.push('/add')"/> -->
     
-    <appHeader :routes="navRoutes" :show-menu="true" />
   </ion-page>
 </template>
 
 <script lang="ts" setup>
-import floatingPostButton from '@/components/floatingPostButton.vue'
-import AppHeader from '@/components/appFoot.vue'
+// import floatingPostButton from '@/components/floatingPostButton.vue'
 import { gql } from '@apollo/client/core'
 import { useApolloClient } from '@vue/apollo-composable'
 import { useQuery } from '@vue/apollo-composable'
+import { format } from 'date-fns'
 import {
   IonPage,
   IonContent,
@@ -85,26 +96,18 @@ import {
   IonText,
   IonButton,
   IonButtons,
-  IonList,
-  IonItem,
-
+  IonRefresher,
+  IonRefresherContent,
+  RefresherCustomEvent
 } from '@ionic/vue'
 
 import { useRouter } from 'vue-router'
 
-// export interface User {
-//   bio: string;
-//   email: string;
-//   id: string;
-//   username: string;
-// }
-
 export interface Job {
   description: string;
-  expiresAt: string; // Or Date if you parse it
+  expiresAt: string;
   id: string;
   title: string;
-  // user: User;
   postType: string;
   origin: string;
   destination: string;
@@ -114,14 +117,10 @@ export interface AllJobsQuery {
   allJobs: Job[];
 }
 
-// Mock demo data
-interface Note {
-  id: number
-  title: string
-  origin: string
-  destination: string
-  image: string
-  
+
+const formatDate = (dateStr: string): string => {
+  const date = new Date(dateStr)
+  return format(date, 'PPP')
 }
 
 const navRoutes = [
@@ -140,45 +139,14 @@ const actions = [
 ];
 
 
-const demoNotes: Note[] = [
-  {
-    id: 1,
-    title: 'Going to Addis Ababa from Adama',
-    origin: 'Adama',
-    destination: 'Addis Ababa',
-    image: 'https://picsum.photos/seed/mojo/400/250',
-    
-  },
-  {
-    id: 2,
-    title: 'Going to Gondar, from Dessie, I can deliver small items',
-    origin: 'Dessie',
-    destination: 'Gondar',
-    image: 'https://picsum.photos/seed/amhara/400/250',
-
-  },
-]
 
 const router = useRouter()
 
-function openNote(note: Note) {
-  console.log('Opening note:', note)
-}
 
 
-// const user_query = gql`
-//   query GetUser($id: ID!) {
-//     user {
-//         bio
-//         email
-//         id
-//         username
-//       }
-//   }
-// `;
 // GraphQL query to fetch jobs
 const JOB_QUERY = gql`
-  query MyQuery {
+  query JOB_QUERY {
     allJobs {
       description
       expiresAt
@@ -191,6 +159,26 @@ const JOB_QUERY = gql`
   }
 `;
 
+const doRefresh = (event: RefresherCustomEvent) => {
+  console.log('Begin async operation...');
+
+  fetchDataFromServer()
+    .then(() => {
+      console.log('Async operation has ended');
+    })
+    .catch((err) => {
+      console.error('Fetch failed', err);
+    })
+    .finally(() => {
+      event.target.complete(); 
+    });
+};
+
+const fetchDataFromServer = async () => {
+  return new Promise((resolve) => setTimeout(resolve, 2000));
+};
+
+
 //  Typed Query Execution
 const { result, loading, error } = useQuery<AllJobsQuery>(JOB_QUERY);
 
@@ -198,7 +186,8 @@ const { result, loading, error } = useQuery<AllJobsQuery>(JOB_QUERY);
 const { client } = useApolloClient();
 console.log('Apollo Client:', client);
 console.log('watchQuery exists?', typeof client?.watchQuery === 'function');
-const data = result;
+
+console.log('Query Data:', result);
 
 
 </script>

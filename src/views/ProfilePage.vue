@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { useRouter } from 'vue-router';
 import { IonContent, IonPage } from '@ionic/vue';
-import appHeader from '@/components/appFoot.vue';
-import AppFoot from '@/components/appFoot.vue';
+
+
 const router = useRouter();
 
 const navRoutes = [
@@ -22,7 +22,6 @@ const navRoutes = [
             <h1>Profile Page</h1>
             <p>This is the profile page.</p>
         </ion-content>
-        <app-foot :routes="navRoutes" />
     </ion-page>
 </template>
 

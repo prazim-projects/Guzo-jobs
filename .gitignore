@@ -35,7 +35,7 @@ npm-debug.log*
 \guzo-jobs-back/guzo_jobs_backend/__pycache__/
 \guzo-jobs-back/guzo_jobs_backend/*.pyc
 \guzo-jobs-back/api/__pycache__/
-\guzo-jobs-back/api/
+# \guzo-jobs-back/api/
 guzo-jobs-back/api/migrations
 \guzo-jobs-back/api/*.pyc
 \guzo-jobs-back/api.zip
@@ -46,3 +46,6 @@ android/.gradle/*
 android/app/*
 \src\vite-env.d.ts
 .env
+src/assets/images/profilePics/*
+/stores/userStore.ts
+src/apollo-client.ts

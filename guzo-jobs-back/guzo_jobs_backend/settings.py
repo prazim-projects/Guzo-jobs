@@ -40,6 +40,18 @@ INSTALLED_APPS = [
     'graphene_django',
     'api',
     'corsheaders',
+    'graphql_jwt',
+    "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
+
+]
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 MIDDLEWARE = [
@@ -54,15 +66,30 @@ MIDDLEWARE = [
     
 ]
 
+
 GRAPHENE = {
-    'SCHEMA': 'guzo_jobs_backend.schema.schema'
+    'SCHEMA': 'guzo_jobs_backend.schema.schema',
+    'MIDDLEWARE': [
+        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    ]
 }
+
+AUTHENTICATION_BACKENDS = [
+    'graphql_jwt.backends.JSONWebTokenBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 AUTH_USER_MODEL = 'api.UserProfile'
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
+CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
 CSRF_COOKIE_HTTPONLY = env.bool('CSRF_COOKIE_HTTPONLY')
+CSRF_COOKIE_SECURE=False
+CSRF_COOKIE_SAMESITE=None
+
+
 ROOT_URLCONF = 'guzo_jobs_backend.urls'
+
 
 TEMPLATES = [
     {

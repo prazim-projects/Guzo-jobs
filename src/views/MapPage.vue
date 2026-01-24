@@ -15,9 +15,7 @@
       <div ref="mapContainer" class="map-container"></div>
     </ion-content>
 
-    <ion-footer v-if="!isFullscreen">
-      <app-foot :routes="navRoutes" />
-    </ion-footer>
+    <!-- <AppFoot /> -->
   </ion-page>
 </template>
 
@@ -39,20 +37,10 @@ import {
   onIonViewWillLeave,
 } from '@ionic/vue';
 import { expandOutline, contractOutline } from 'ionicons/icons';
-import AppFoot from '@/components/appFoot.vue';
 
 let map: LeafletMap | null = null;
 const mapContainer = ref<HTMLDivElement | null>(null);
 const isFullscreen = ref(false);
-
-const navRoutes = [
-  { path: '/', label: 'Home', icon: 'home-outline' },
-  { path: '/add', label: 'Add Note', icon: 'add-circle-outline' },
-  { path: '/login', label: 'Login', icon: 'person-circle-outline' },
-  { path: '/profile', label: 'Profile', icon: 'person-circle-outline' },
-  { path: '/mapET', label: 'Map ET', icon: 'map-outline' },
-  { path: '/signup', label: 'Signup', icon: 'person-add-outline' },
-];
 
 const initializeMap = () => {
   if (!mapContainer.value || map) return; // Prevent re-init
