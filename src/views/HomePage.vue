@@ -1,76 +1,103 @@
 <template>
   <ion-page>
-    <ion-content >
-      <ion-refresher slot="fixed" @ionRefresh="doRefresh($event)">
-        <ion-refresher-content 
-          pulling-text="Pull to refresh" 
-          refreshing-spinner="circles"
-          refreshing-text="Updating data...">
-        </ion-refresher-content>
-      </ion-refresher>
-      <div class="ion-padding">
-        <div class="hero ion-padding">
-        <h1 class="title">Welcome to Guzo Jobs 🌍</h1>
-        <p class="subtitle">Odd job for travellers!</p>
-        </div>
-      </div>
+    <ion-content>
+  <ion-refresher slot="fixed" @ionRefresh="doRefresh($event)">
+    <ion-refresher-content 
+      pulling-text="Pull to refresh" 
+      refreshing-spinner="circles"
+      refreshing-text="Updating data...">
+    </ion-refresher-content>
+  </ion-refresher>
 
-      <!-- Jobs List -->
-      <ion-grid v-if="!loading && !error && result?.allJobs?.length">
-        <ion-row>
-          <ion-col
-            size="12"
-            size-md="6"
-            size-sm="4"
-            v-for="job in result.allJobs">
-            <ion-card class="job-card">
+  <div class="ion-padding">
+    <div class="hero ion-padding">
+      <h1 class="title">Welcome to Guzo Jobs 🌍</h1>
+      <p class="subtitle">Odd job for travellers!</p>
+    </div>
+  </div>
 
-              <!-- Dynamic Picsum image based on destination -->
-              <img
-                :src="`https://picsum.photos/seed/${encodeURIComponent(job.destination)}/500/300`"
-                alt="Image for trip to {{ job.destination }}"
-                class="card-image"
-               
-              />
+  <!-- Jobs List -->
+  <ion-grid v-if="!loading && !error && result?.availableJobs?.length">
+    <ion-row>
+      <ion-col size="12" size-md="6" size-sm="4" v-for="job in result.availableJobs" :key="job.id">
+        <ion-card class="job-card">
+          <!-- Dynamic Image -->
+          <img
+            :src="`https://picsum.photos/seed/${encodeURIComponent(job.destination)}/500/300`"
+            :alt="'Image for trip to ' + job.destination"
+            class="card-image"
+          />
 
-              <ion-card-header>
-                <ion-card-title>{{ job.description.substring(0, 60) + '...' }}</ion-card-title>
-                <ion-card-subtitle>
-                  <ion-icon name="location-outline" size="small"></ion-icon>
-                    Origin Location: {{ job.origin }}
-                </ion-card-subtitle>
-              </ion-card-header>
+          <ion-card-header>
+            <ion-card-title>{{ job.description.substring(0, 60) + '...' }}</ion-card-title>
+            <ion-card-subtitle>
+              <ion-icon name="location-outline" size="small"></ion-icon>
+              Origin Location: {{ job.origin }}
+            </ion-card-subtitle>
+          </ion-card-header>
 
-              <ion-card-content>
-                <p><strong>Going To:</strong> {{ job.destination }}</p>
-                <p v-if="job.expiresAt">
-                  <ion-icon name="time-outline" size="small"></ion-icon>
-                  Expires: {{ formatDate(job.expiresAt) }}
-                </p>
-              </ion-card-content>
+          <ion-card-content>
+            <p><strong>Going To:</strong> {{ job.destination }}</p>
+            <p v-if="job.expiresAt">
+              <ion-icon name="time-outline" size="small"></ion-icon>
+              Expires: {{ formatDate(job.expiresAt) }}
+            </p>
+          </ion-card-content>
 
-              <ion-card-content class="ion-text-end">
-                <ion-buttons>
-                  <ion-button
-                    v-for="action in actions"
-                    :key="action.name"
-                    fill="clear"
-                    size="small"
-                    @click="action.onClick()"
-                  >
-                    <ion-icon :name="action.icon"></ion-icon>
-                  </ion-button>
-                </ion-buttons>
-              </ion-card-content>
+          <!-- AUTHENTICATED USER SECTION -->
+          <ion-item v-if="job.user" lines="none" class="user-info-item">
+            <ion-avatar slot="start">
+              <img :src="job.user.profilePicture || 'https://ionicframework.com'" />
+            </ion-avatar>
+            <ion-label>
+              <h3>{{ job.user.username }}</h3>
+              <p v-if="job.user.phoneNumber">
+                <ion-icon name="call-outline"></ion-icon> {{ job.user.phoneNumber }}
+              </p>
+              <em><p> price: {{ job.price }}</p></em>
+            </ion-label>
+            <!-- Native call button -->
+            <ion-button v-if="job.user.phoneNumber" slot="end" fill="clear" :href="'tel:' + job.user.phoneNumber">
+              <ion-icon slot="icon-only" name="call"></ion-icon>
+            </ion-button>
+          </ion-item>
+          <div class="ion-padding-horizontal ion-padding-bottom">
+            <ion-button 
+              expand="block" 
+              color="success" 
+              class="ion-no-margin"
+              @click="handleAcceptJob(job.id, 'PENDING')"
+              v-if="job.user && job.user.id !== authStore.user?.id">
+                <ion-icon slot="start" :icon="checkmarkCircle"></ion-icon>
+                Accept Job
+              </ion-button>
+    
+            <ion-badge v-else-if="job.user" color="light" expand="block" mode="ios" class="full-width-badge">
+              Your Post
+            </ion-badge>
+          </div>
+          <div v-if="job.user?.id === authStore.user?.id && job.contract?.status === 'PENDING'" class="ion-padding approval-box">
+            <ion-item lines="none" color="light">
+              <ion-icon slot="start" :icon="alertCircleOutline" color="warning"></ion-icon>
+              <ion-label>
+                <h3>Pending Acceptance</h3>
+                <p>{{ job.contract.acceptor.username }} wants to do this job.</p>
+              </ion-label>
+            </ion-item>
+            
+            <ion-button expand="block" color="primary" @click="handleJobConfirmation(job.id, job.user?.id)">
+              Confirm {{ job.contract.acceptor.username }}
+            </ion-button>
+          </div>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
 
-            </ion-card>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
-      <ion-text v-if="loading">Loading...</ion-text>
-      <ion-text v-if="error">Error: {{ error.message }}</ion-text>
-    </ion-content>
-    <!-- <floatingPostButton class="fbutton" @on-click="router.push('/add')"/> -->
+  <ion-text v-if="loading" class="ion-padding ion-text-center">Loading...</ion-text>
+  <ion-text v-if="error" color="danger" class="ion-padding">Error: {{ error.message }}</ion-text>
+</ion-content>
+
     
   </ion-page>
 </template>
@@ -82,8 +109,11 @@ import { useApolloClient } from '@vue/apollo-composable'
 import { useQuery } from '@vue/apollo-composable'
 import { format } from 'date-fns'
 import {
+  IonAvatar,
   IonPage,
+  IonLabel,
   IonContent,
+  IonBadge,
   IonCard,
   IonCardHeader,
   IonCardTitle,
@@ -98,10 +128,18 @@ import {
   IonButtons,
   IonRefresher,
   IonRefresherContent,
-  RefresherCustomEvent
+  RefresherCustomEvent,
+  toastController,
+  IonItem
 } from '@ionic/vue'
 
+import { callOutline, call, chatbubble, share, compass, checkmarkCircle, timeOutline, alertCircleOutline } from 'ionicons/icons'
 import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/userStore'
+
+const authStore = useAuthStore()
+const { client } = useApolloClient()
 
 export interface Job {
   description: string;
@@ -111,10 +149,26 @@ export interface Job {
   postType: string;
   origin: string;
   destination: string;
+  price?: number;
+  user?: {
+    id: string;
+    username: string;
+    phoneNumber?: string;
+    profilePicture?: string;
+  };
+  contract?: {
+    id: string;
+    status: string;
+    acceptor: {
+      id: string;
+      username: string;
+    };
+  }
 }
 
+
 export interface AllJobsQuery {
-  allJobs: Job[];
+  availableJobs: Job[];
 }
 
 
@@ -123,31 +177,39 @@ const formatDate = (dateStr: string): string => {
   return format(date, 'PPP')
 }
 
-const navRoutes = [
-  { path: '/', label: 'Home', icon: 'home-outline' },
-  { path: '/add', label: 'Add Note', icon: 'add' },
-  { path: '/login', label: 'Login', icon: 'log-in-outline' },
-  { path: '/profile', label: 'Profile', icon: 'person-circle-outline' },
-  { path: '/mapET', label: 'Map ET', icon: 'map-outline' },
-  { path: '/signup', label: 'Signup', icon: 'person-add-outline' },
-];
-
-const actions = [
-   { name: "comment", icon: "chatbubble", onClick: () => console.log("Comment") },
-  { name: "share", icon: "share", onClick: () => console.log("Shared!") },
-  {name: "route", icon: "compass", onClick: () => console.log("Route!") },
-];
-
-
-
 const router = useRouter()
 
+const CONFIRM_JOB_ACCEPTANCE = gql`
+  mutation confirmJobContract($id: ID!, $poster: ID!) {
+    confirmJobContract(id: $id, poster: $poster) {
+      success
+    }
+  }
+`;
 
+const ACCEPT_JOB_MUTATION = gql`
+  mutation acceptJobPost($jobPostId: ID!, $status: String!) {
+    acceptJobPost(jobPostId: $jobPostId, status: $status) {
+      contract {
+        id
+        agreedPrice
+        jobPost {
+          id
+          title
+        }
+        acceptor {
+          id
+          username
+        }
+      }
+    }
+  }
+`;
 
 // GraphQL query to fetch jobs
 const JOB_QUERY = gql`
   query JOB_QUERY {
-    allJobs {
+    availableJobs {
       description
       expiresAt
       id
@@ -155,9 +217,89 @@ const JOB_QUERY = gql`
       postType
       origin
       destination
+      
     }
   }
 `;
+
+const JOB_QUERY_AUTHENTICATED = gql`
+  query JOB_QUERY_AUTHENTICATED {
+    availableJobs {
+      description
+      expiresAt
+      id
+      title
+      postType
+      origin
+      destination
+      price
+      user {
+        id
+        username
+        phoneNumber
+        profilePicture
+      }
+      contract {
+        id
+        status
+        acceptor {
+          id
+          username
+        }
+      }
+    }
+  }
+`;
+
+const handleJobConfirmation = async (contractId: string, posterId: string) => {
+  try {
+    const result = await client.mutate({
+      mutation: CONFIRM_JOB_ACCEPTANCE,
+      variables: {
+        id: contractId,
+        poster: posterId
+      }
+    });
+    console.log('Job confirmed:', result);
+    const toast = await toastController.create({ message: 'Job Confirmed successfully!', duration: 2000, color: 'success' });
+    await toast.present();
+    router.replace('/home');
+  } catch (error) {
+    console.error('Error confirming job:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const toast = await toastController.create({ message, duration: 3000, color: 'danger' });
+    await toast.present();
+  }
+};
+
+const handleAcceptJob = async (jobId: string, status: string) => {
+  try {
+    const result = await client.mutate({
+      mutation: ACCEPT_JOB_MUTATION,
+      variables: {
+        jobPostId: jobId,
+        status: "PENDING"
+      }
+    });
+    console.log('Job accepted:', result);
+    const toast = await toastController.create({ message: 'Job Accepted successfully! Waiting for Confimarion from owner', duration: 2000, color: 'success' });
+    await toast.present();
+    router.replace('/home');
+  } catch (error) {
+    console.error('Error accepting job:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const toast = await toastController.create({ message, duration: 3000, color: 'danger' });
+    await toast.present();
+  }
+};
+
+
+const currentQuery = computed(() => {
+  return localStorage.getItem('authToken') 
+    ? JOB_QUERY_AUTHENTICATED 
+    : JOB_QUERY;
+});
+
 
 const doRefresh = (event: RefresherCustomEvent) => {
   console.log('Begin async operation...');
@@ -179,15 +321,9 @@ const fetchDataFromServer = async () => {
 };
 
 
-//  Typed Query Execution
-const { result, loading, error } = useQuery<AllJobsQuery>(JOB_QUERY);
-
-// Debug line to check client
-const { client } = useApolloClient();
-console.log('Apollo Client:', client);
-console.log('watchQuery exists?', typeof client?.watchQuery === 'function');
-
+const { result, loading, error } = useQuery<AllJobsQuery>(currentQuery);
 console.log('Query Data:', result);
+
 
 
 </script>
@@ -214,6 +350,35 @@ console.log('Query Data:', result);
   z-index: 1000;
   padding-bottom: 30px;
 }
+.user-info-item {
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+  background: rgba(var(--ion-color-step-50-rgb), 0.1);
+  margin-top: 8px;
+}
+
+.user-info-item ion-avatar {
+  width: 32px;
+  height: 32px;
+}
+.job-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.full-width-badge {
+  width: 100%;
+  padding: 10px;
+  font-size: 0.9rem;
+  --background: var(--ion-color-step-100);
+}
+
+/* Ensure the button doesn't hug the edges too tightly */
+.ion-padding-horizontal {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
 ion-card {
   transition: transform 0.2s ease;
 }

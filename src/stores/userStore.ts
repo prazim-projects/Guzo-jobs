@@ -5,38 +5,48 @@ import { useApolloClient } from '@vue/apollo-composable'
 import { useRouter } from 'vue-router'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(localStorage.getItem('authToken'))
-  const user = ref<{ id: string; username: string; phoneNumber: string } | null>(null)
-  const isAuthenticated = ref(!!token.value)
-
-  const { client } = useApolloClient()
+    const token = ref<string | null>(localStorage.getItem('authToken'))
+    const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+    const isAuthenticated = ref(!!token.value)
+  
+    const { client } = useApolloClient()
 
   // Login Mutation
-  async function login(username: string, password: string) {
-    const LOGIN_MUTATION = gql`
-      mutation Login($username: String!, $password: String!) {
-        tokenAuth(username: $username, password: $password) {
-          token
-          payload
+    async function login(username: string, password: string) {
+        const LOGIN_MUTATION = gql`
+        mutation Login($username: String!, $password: String!) {
+            tokenAuth(username: $username, password: $password) {
+            token
+            payload
+            user {
+                id
+                bio
+                email
+                phoneNumber
+                username
+                }
+            }
         }
-      }
-    `
-    try {
-      const { data } = await client.mutate({
-        mutation: LOGIN_MUTATION,
-        variables: { username, password }
-      })
+        `
+        try {
+        const { data } = await client.mutate({
+            mutation: LOGIN_MUTATION,
+            variables: { username, password }
+        })
 
-      const jwtToken = data.tokenAuth.token
-      if (jwtToken) {
-        token.value = jwtToken
-        localStorage.setItem('authToken', jwtToken)
-        isAuthenticated.value = true
-      }
-    } catch (error) {
-      console.error('Login failed:', error)
-      throw error  // show alert
-    }
+        const jwtToken = data.tokenAuth.token
+        const userData = data.tokenAuth.user
+        if (jwtToken) {
+            token.value = jwtToken
+            user.value = userData
+            localStorage.setItem('authToken', jwtToken)
+            localStorage.setItem('user', JSON.stringify(userData)); 
+            isAuthenticated.value = true
+        }
+        } catch (error) {
+        console.error('Login failed:', error)
+        throw error  // show alert
+        }
   }
 
   // Register Mutation
@@ -60,10 +70,12 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       const jwtToken = data.RegisterUser.token 
+      const user = data.RegisterUser.user
       if(jwtToken){
         token.value = jwtToken
-        user.value = data.RegisterUser.user
+        user.value = user
         localStorage.setItem('authToken', jwtToken)
+        localStorage.setItem('user', JSON.stringify(user));
         isAuthenticated.value = true
 
       }
@@ -79,6 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     localStorage.removeItem('authToken')
+    localStorage.removeItem('user')
     isAuthenticated.value = false
     router.push('/home')
   }

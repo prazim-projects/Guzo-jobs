@@ -47,5 +47,4 @@ android/app/*
 \src\vite-env.d.ts
 .env
 src/assets/images/profilePics/*
-/stores/userStore.ts
-src/apollo-client.ts
+src/mutations.gql

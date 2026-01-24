@@ -6,10 +6,11 @@ import { useAuthStore } from '@/stores/userStore';
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    component: () => import('@/App.vue'),  // tabs wrapper
+    component: () => import('@/components/bottomTabs.vue'),  // tabs wrapper
     children: [
       { path: '', redirect: '/home' },
       { path: 'home', component: () => import('@/views/HomePage.vue') },
+      { path: 'myJobs', component: () => import('@/views/myJobs.vue'), meta: { requiresAuth: true } },
       { path: 'add', component: () => import('@/views/NotePage.vue'), meta: { requiresAuth: true } },
       { path: 'login', component: () => import('@/views/login.vue') },
       { path: 'signup', component: () => import('@/views/register.vue') },
@@ -17,6 +18,7 @@ const routes: Array<RouteRecordRaw> = [
       { path: 'mapET', component: () => import('@/views/MapPage.vue'), meta: { requiresAuth: true } },
       {path: 'logout', component: () => import('@/views/logout.vue'), meta: { requiresAuth: true } },
       {path: 'postJob', component: () => import('@/views/createJobPost.vue'), meta: { requiresAuth: true } },
+      {path: 'myJobs', component: () => import('@/views/myJobs.vue'), meta: { requiresAuth: true } },
     ]
   },
 ];

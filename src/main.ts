@@ -19,7 +19,7 @@ import '@ionic/vue/css/structure.css';
 import '@ionic/vue/css/typography.css';
 
 import { addIcons } from 'ionicons';
-import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline, alertCircleOutline, locationOutline, timeOutline, logOutOutline } from 'ionicons/icons';
+import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline, alertCircleOutline, locationOutline, timeOutline, logOutOutline, pencil, callOutline, call, briefcaseOutline } from 'ionicons/icons';
 addIcons({
   compass,
   add,
@@ -36,10 +36,15 @@ addIcons({
   personCircleOutline,
   addCircleOutline,
   logInOutline,
-  alertCircleOutline,
+  pencil,
+  alertCircleOutline, 
+  settings,
   locationOutline,
   timeOutline,
-  logOutOutline
+  logOutOutline,
+  callOutline,
+  call,
+  briefcaseOutline
 })
 
 /* Optional CSS utils that can be commented out */
