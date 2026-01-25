@@ -64,11 +64,12 @@ class createJobPost(graphene.Mutation):
         origin = graphene.String(required=True)
         destination = graphene.String(required=True)
         post_type = graphene.String(required=True)
+        price = graphene.String(required=True)
 
     jobPost = graphene.Field(JobPostingType)
 
     @classmethod
-    def mutate(cls, root, info, title, description, expires_at, origin, destination, post_type):
+    def mutate(cls, root, info, title, description, expires_at, origin, destination, post_type, price):
         # print(f"DEBUG: Auth Header -> {info.context.META.get('HTTP_AUTHORIZATION')}")
         # print(f"DEBUG: User in Context -> {info.context.user}")
 
@@ -83,7 +84,8 @@ class createJobPost(graphene.Mutation):
             user=user,
             origin=origin,
             destination=destination,
-            post_type=post_type
+            post_type=post_type,
+            price=price
         )
         jobPost.save()
         return createJobPost(jobPost=jobPost)
@@ -110,8 +112,14 @@ class acceptJobPost(graphene.Mutation):
         if job_post.user == user:
             raise Exception("You cannot accept your own job post")
 
-        if hasattr(job_post, 'contract'):
-            raise Exception("This job post has already been accepted.")
+        existing_application = Contract.objects.filter(
+            job_post=job_post, 
+            acceptor=user, 
+            status__in=[Contract.Status.PENDING, Contract.Status.ACCEPTED]
+        ).first()
+        
+        if existing_application:
+            raise Exception("You have already applied for this job.")
 
         contract = Contract(
             job_post=job_post,
@@ -126,62 +134,113 @@ class acceptJobPost(graphene.Mutation):
 
 class ConfirmJobAcceptance(graphene.Mutation):
     class Arguments:
-        poster = graphene.ID(required=True)
-        id = graphene.ID(required=True)
+        contract_id = graphene.ID(required=True)
 
     success = graphene.Boolean()
     
     @classmethod
-    def mutate(cls, root, info, id, poster):
+    def mutate(cls, root, info, contract_id):
         user = info.context.user
         if user.is_anonymous:
             raise Exception("You must be logged in to confirm job acceptance.")
 
         try:
-            job_post = JobPosting.objects.get(pk=id)
-        except JobPosting.DoesNotExist:
-            raise Exception("Job post not found.")
+            contract = Contract.objects.get(pk=contract_id)
+        except Contract.DoesNotExist:
+            raise Exception("Contract not found.")
 
-        if job_post.user.id != int(poster):
+        if contract.poster != user:
             raise Exception("Only the job owner can confirm acceptance.")
 
-        try:
-            contract = Contract.objects.get(job_post=job_post)
-        except Contract.DoesNotExist:
-            raise Exception("No contract found for this job post.")
+        if contract.status != Contract.Status.PENDING:
+            raise Exception("This contract is not in pending status.")
 
+        # Accept this contract
         contract.status = Contract.Status.ACCEPTED
         contract.save()
+
+        # Reject all other pending contracts for this job
+        Contract.objects.filter(
+            job_post=contract.job_post,
+            status=Contract.Status.PENDING
+        ).exclude(pk=contract_id).update(status=Contract.Status.CANCELLED)
+
         return ConfirmJobAcceptance(success=True)
 
-class confirmJobCompleted(graphene.Mutation):
+class RejectJobApplication(graphene.Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
+        contract_id = graphene.ID(required=True)
 
     success = graphene.Boolean()
     
     @classmethod
-    def mutate(cls, root, info, id):
+    def mutate(cls, root, info, contract_id):
+        user = info.context.user
+        if user.is_anonymous:
+            raise Exception("You must be logged in to reject job application.")
+
+        try:
+            contract = Contract.objects.get(pk=contract_id)
+        except Contract.DoesNotExist:
+            raise Exception("Contract not found.")
+
+        if contract.status != Contract.Status.PENDING:
+            raise Exception("This contract is not in pending status.")
+
+        # Delete contract to make job available again
+        contract.delete()
+
+        return RejectJobApplication(success=True)
+
+class confirmJobCompleted(graphene.Mutation):
+    class Arguments:
+        contract_id = graphene.ID(required=True)
+
+    success = graphene.Boolean()
+    
+    @classmethod
+    def mutate(cls, root, info, contract_id):
         user = info.context.user
         if user.is_anonymous:
             raise Exception("You must be logged in to confirm job completion.")
 
         try:
-            job_post = JobPosting.objects.get(pk=id)
-        except JobPosting.DoesNotExist:
-            raise Exception("Job post not found.")
-
-        try:
-            contract = Contract.objects.get(job_post=job_post)
+            contract = Contract.objects.get(pk=contract_id)
         except Contract.DoesNotExist:
-            raise Exception("No contract found for this job post.")
+            raise Exception("Contract not found.")
 
-        if contract.acceptor != user:
-            raise Exception("Only the acceptor can confirm completion.")
+        # Check if user is either the acceptor or the poster
+        if contract.acceptor != user and contract.poster != user:
+            raise Exception("Only contract parties can confirm completion.")
 
-        contract.status = Contract.Status.COMPLETED
-        contract.save()
-        return confirmJobCompleted(success=True)
+        # Handle different completion scenarios
+        if contract.status == Contract.Status.ACCEPTED:
+            # Either party can initiate completion
+            if contract.acceptor == user:
+                contract.status = Contract.Status.COMPLETED_BY_ACCEPTOR
+            elif contract.poster == user:
+                contract.status = Contract.Status.COMPLETED_BY_POSTER
+            contract.save()
+            return confirmJobCompleted(success=True)
+            
+        elif contract.status == Contract.Status.COMPLETED_BY_ACCEPTOR:
+            # Only poster can confirm acceptor's completion
+            if contract.poster != user:
+                raise Exception("Only the job poster can confirm completion initiated by the acceptor.")
+            contract.status = Contract.Status.COMPLETED
+            contract.save()
+            return confirmJobCompleted(success=True)
+            
+        elif contract.status == Contract.Status.COMPLETED_BY_POSTER:
+            # Only acceptor can confirm poster's completion
+            if contract.acceptor != user:
+                raise Exception("Only the job acceptor can confirm completion initiated by the poster.")
+            contract.status = Contract.Status.COMPLETED
+            contract.save()
+            return confirmJobCompleted(success=True)
+            
+        else:
+            raise Exception("Contract is not in a state that allows completion confirmation.")
     
 class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
     user = graphene.Field(UserType)
@@ -200,4 +259,5 @@ class Mutation(graphene.ObjectType):
     editProfile = editProfile.Field()
     acceptJobPost = acceptJobPost.Field()
     confirmJobContract = ConfirmJobAcceptance.Field()
+    rejectJobApplication = RejectJobApplication.Field()
     confirmJobCompleted = confirmJobCompleted.Field()

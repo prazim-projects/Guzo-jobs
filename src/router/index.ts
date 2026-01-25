@@ -21,6 +21,10 @@ const routes: Array<RouteRecordRaw> = [
       {path: 'myJobs', component: () => import('@/views/myJobs.vue'), meta: { requiresAuth: true } },
     ]
   },
+  {
+    path: '/onboarding',
+    component: () => import('@/views/Onboarding.vue')
+  }
 ];
 
 const router = createRouter({
@@ -31,7 +35,20 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
   const userStore = useAuthStore();
-  const isAuthenticated = userStore.isAuthenticated; 
+  const isAuthenticated = userStore.isAuthenticated;
+  const onboardingCompleted = localStorage.getItem('onboardingCompleted') === 'true';
+
+  // If user hasn't completed onboarding and isn't already on onboarding page
+  if (!onboardingCompleted && to.path !== '/onboarding') {
+    next({ path: '/onboarding' });
+    return;
+  }
+
+  // If user completed onboarding and is trying to access onboarding, redirect to home
+  if (onboardingCompleted && to.path === '/onboarding') {
+    next({ path: '/home' });
+    return;
+  }
 
   if (requiresAuth && !isAuthenticated) {
     // Redirect unauthenticated users to login page

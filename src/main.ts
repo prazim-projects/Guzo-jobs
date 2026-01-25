@@ -19,13 +19,19 @@ import '@ionic/vue/css/structure.css';
 import '@ionic/vue/css/typography.css';
 
 import { addIcons } from 'ionicons';
-import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline, alertCircleOutline, locationOutline, timeOutline, logOutOutline, pencil, callOutline, call, briefcaseOutline } from 'ionicons/icons';
+import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline, alertCircleOutline, locationOutline, timeOutline, logOutOutline, pencil, callOutline, call, briefcaseOutline, checkmarkCircle, rocketOutline, shieldCheckmarkOutline, searchOutline, arrowForward, airplaneOutline } from 'ionicons/icons';
 addIcons({
   compass,
   add,
   remove,
   home,
   pin,
+  checkmarkCircle,
+  rocketOutline,
+  shieldCheckmarkOutline,
+  searchOutline,
+  arrowForward,
+  airplaneOutline,
   contract,
   heart,
   chatbubble,

@@ -18,6 +18,15 @@ class ContractType(graphene.ObjectType):
     created_at = graphene.DateTime()
     updated_at = graphene.DateTime()
 
+    def resolve_job_post(self, info):
+        return self.job_post
+
+    def resolve_poster(self, info):
+        return self.poster
+
+    def resolve_acceptor(self, info):
+        return self.acceptor
+
 class JobPostingType(graphene.ObjectType):
     id = graphene.ID()
     title = graphene.String()
@@ -27,5 +36,11 @@ class JobPostingType(graphene.ObjectType):
     origin = graphene.String()
     destination = graphene.String()
     post_type = graphene.String()
-    contract = graphene.Field(ContractType)
+    contracts = graphene.List(ContractType)
     price = graphene.Float()
+
+    def resolve_user(self, info):
+        return self.user
+
+    def resolve_contracts(self, info):
+        return self.contract.all()

@@ -23,18 +23,22 @@
         <ion-card class="job-card">
           <!-- Dynamic Image -->
           <img
-            :src="`https://picsum.photos/seed/${encodeURIComponent(job.destination)}/500/300`"
+            :src="`https://picsum.photos/seed/${encodeURIComponent(job.postType)}${encodeURI(job.origin)}/500/300`"
             :alt="'Image for trip to ' + job.destination"
             class="card-image"
           />
 
           <ion-card-header>
-            <ion-card-title>{{ job.description.substring(0, 60) + '...' }}</ion-card-title>
+            <ion-card-title>{{ job.title.substring(0, 60) + '...' }}</ion-card-title>
             <ion-card-subtitle>
               <ion-icon name="location-outline" size="small"></ion-icon>
               Origin Location: {{ job.origin }}
             </ion-card-subtitle>
           </ion-card-header>
+
+          <ion-card-content>
+              {{ job.description }}
+          </ion-card-content>
 
           <ion-card-content>
             <p><strong>Going To:</strong> {{ job.destination }}</p>
@@ -51,15 +55,8 @@
             </ion-avatar>
             <ion-label>
               <h3>{{ job.user.username }}</h3>
-              <p v-if="job.user.phoneNumber">
-                <ion-icon name="call-outline"></ion-icon> {{ job.user.phoneNumber }}
-              </p>
-              <em><p> price: {{ job.price }}</p></em>
+              <em><p> price: {{ job.price }}ETB</p></em>
             </ion-label>
-            <!-- Native call button -->
-            <ion-button v-if="job.user.phoneNumber" slot="end" fill="clear" :href="'tel:' + job.user.phoneNumber">
-              <ion-icon slot="icon-only" name="call"></ion-icon>
-            </ion-button>
           </ion-item>
           <div class="ion-padding-horizontal ion-padding-bottom">
             <ion-button 
@@ -67,27 +64,39 @@
               color="success" 
               class="ion-no-margin"
               @click="handleAcceptJob(job.id, 'PENDING')"
-              v-if="job.user && job.user.id !== authStore.user?.id">
+              v-if="job.user && job.user.id !== authStore.user?.id && !hasUserApplied(job)">
                 <ion-icon slot="start" :icon="checkmarkCircle"></ion-icon>
                 Accept Job
               </ion-button>
+    
+            <ion-badge v-else-if="job.user && hasUserApplied(job)" color="warning" expand="block" mode="ios" class="full-width-badge">
+              <ion-icon slot="start" name="time-outline"></ion-icon>
+              Application Pending
+            </ion-badge>
     
             <ion-badge v-else-if="job.user" color="light" expand="block" mode="ios" class="full-width-badge">
               Your Post
             </ion-badge>
           </div>
-          <div v-if="job.user?.id === authStore.user?.id && job.contract?.status === 'PENDING'" class="ion-padding approval-box">
-            <ion-item lines="none" color="light">
-              <ion-icon slot="start" :icon="alertCircleOutline" color="warning"></ion-icon>
-              <ion-label>
-                <h3>Pending Acceptance</h3>
-                <p>{{ job.contract.acceptor.username }} wants to do this job.</p>
-              </ion-label>
-            </ion-item>
-            
-            <ion-button expand="block" color="primary" @click="handleJobConfirmation(job.id, job.user?.id)">
-              Confirm {{ job.contract.acceptor.username }}
-            </ion-button>
+          <div v-if="job.user?.id === authStore.user?.id" class="ion-padding">
+            <div v-for="contract in job.contracts?.filter(c => c.status === 'PENDING')" :key="contract.id" class="approval-box">
+              <ion-item lines="none" color="light">
+                <ion-icon slot="start" :icon="alertCircleOutline" color="warning"></ion-icon>
+                <ion-label>
+                  <h3>Pending Acceptance</h3>
+                  <p>{{ contract.acceptor.username }} wants to do this job.</p>
+                </ion-label>
+              </ion-item>
+              
+              <div class="contract-actions">
+                <ion-button size="small" color="primary" @click="handleJobConfirmation(contract.id)">
+                  Confirm {{ contract.acceptor.username }}
+                </ion-button>
+                <ion-button size="small" color="danger" @click="handleJobRejection(contract.id)">
+                  Reject
+                </ion-button>
+              </div>
+            </div>
           </div>
         </ion-card>
       </ion-col>
@@ -156,14 +165,14 @@ export interface Job {
     phoneNumber?: string;
     profilePicture?: string;
   };
-  contract?: {
+  contracts?: Array<{
     id: string;
     status: string;
     acceptor: {
       id: string;
       username: string;
     };
-  }
+  }>
 }
 
 
@@ -180,8 +189,16 @@ const formatDate = (dateStr: string): string => {
 const router = useRouter()
 
 const CONFIRM_JOB_ACCEPTANCE = gql`
-  mutation confirmJobContract($id: ID!, $poster: ID!) {
-    confirmJobContract(id: $id, poster: $poster) {
+  mutation confirmJobContract($contractId: ID!) {
+    confirmJobContract(contractId: $contractId) {
+      success
+    }
+  }
+`;
+
+const REJECT_JOB_APPLICATION = gql`
+  mutation rejectJobApplication($contractId: ID!) {
+    rejectJobApplication(contractId: $contractId) {
       success
     }
   }
@@ -239,7 +256,7 @@ const JOB_QUERY_AUTHENTICATED = gql`
         phoneNumber
         profilePicture
       }
-      contract {
+      contracts {
         id
         status
         acceptor {
@@ -251,13 +268,12 @@ const JOB_QUERY_AUTHENTICATED = gql`
   }
 `;
 
-const handleJobConfirmation = async (contractId: string, posterId: string) => {
+const handleJobConfirmation = async (contractId: string) => {
   try {
     const result = await client.mutate({
       mutation: CONFIRM_JOB_ACCEPTANCE,
       variables: {
-        id: contractId,
-        poster: posterId
+        contractId: contractId
       }
     });
     console.log('Job confirmed:', result);
@@ -272,6 +288,32 @@ const handleJobConfirmation = async (contractId: string, posterId: string) => {
   }
 };
 
+const handleJobRejection = async (contractId: string) => {
+  try {
+    const result = await client.mutate({
+      mutation: REJECT_JOB_APPLICATION,
+      variables: {
+        contractId: contractId
+      }
+    });
+    console.log('Job rejected:', result);
+    const toast = await toastController.create({ message: 'Application rejected!', duration: 2000, color: 'warning' });
+    await toast.present();
+    router.replace('/home');
+  } catch (error) {
+    console.error('Error rejecting job:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const toast = await toastController.create({ message, duration: 3000, color: 'danger' });
+    await toast.present();
+  }
+};
+
+const hasUserApplied = (job: Job): boolean => {
+  return job.contracts?.some(contract => 
+    contract.acceptor?.id === authStore.user?.id && contract.status === 'PENDING'
+  ) || false;
+};
+
 const handleAcceptJob = async (jobId: string, status: string) => {
   try {
     const result = await client.mutate({
@@ -282,7 +324,7 @@ const handleAcceptJob = async (jobId: string, status: string) => {
       }
     });
     console.log('Job accepted:', result);
-    const toast = await toastController.create({ message: 'Job Accepted successfully! Waiting for Confimarion from owner', duration: 2000, color: 'success' });
+    const toast = await toastController.create({ message: 'Applied to Job successfully! Waiting for Confimarion from owner', duration: 2000, color: 'success' });
     await toast.present();
     router.replace('/home');
   } catch (error) {
@@ -301,19 +343,18 @@ const currentQuery = computed(() => {
 });
 
 
-const doRefresh = (event: RefresherCustomEvent) => {
-  console.log('Begin async operation...');
+const doRefresh = async (event: RefresherCustomEvent) => {
+  console.log('Refreshing data...');
 
-  fetchDataFromServer()
-    .then(() => {
-      console.log('Async operation has ended');
-    })
-    .catch((err) => {
-      console.error('Fetch failed', err);
-    })
-    .finally(() => {
-      event.target.complete(); 
-    });
+  try {
+    // refetch() returns a promise that resolves when the network call finishes
+    await refetch();
+    console.log('Data successfully updated');
+  } catch (err) {
+    console.error('Refetch failed', err);
+  } finally {
+    event.target.complete(); 
+  }
 };
 
 const fetchDataFromServer = async () => {
@@ -321,7 +362,7 @@ const fetchDataFromServer = async () => {
 };
 
 
-const { result, loading, error } = useQuery<AllJobsQuery>(currentQuery);
+const { result, loading, error, refetch } = useQuery<AllJobsQuery>(currentQuery);
 console.log('Query Data:', result);
 
 

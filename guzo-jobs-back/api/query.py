@@ -22,9 +22,8 @@ class Query(graphene.ObjectType):
             return None
         
     def resolve_allJobs(root, info):
-        return JobPosting.objects.select_related('user').all()
+        return JobPosting.objects.select_related('user').prefetch_related('contract').all()
     
     def resolve_availableJobs(root, info):
-        return JobPosting.objects.select_related('user').filter(
-            models.Q(contract__isnull=True) | models.Q(contract__status='PENDING')
-        )
+        return JobPosting.objects.select_related('user').prefetch_related('contract').exclude(contract__status__in=[ 'ACCEPTED', 'COMPLETED' ]).distinct()
+    

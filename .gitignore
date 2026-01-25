@@ -48,3 +48,5 @@ android/app/*
 .env
 src/assets/images/profilePics/*
 src/mutations.gql
+.env.example
+guzo-jobs-back/guzo_jobs_backend/settings_prod.py

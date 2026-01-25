@@ -10,7 +10,7 @@
       <ion-list>
         <!-- Title Input -->
         <ion-item>
-          <ion-label position="stacked">Job Title</ion-label>
+          <ion-label position="stacked">የሥራ ርዕስ</ion-label>
           <ion-input v-model="form.title" placeholder="Enter title"></ion-input>
         </ion-item>
 
@@ -18,9 +18,10 @@
         <ion-item>
           <ion-label position="stacked">Post Type</ion-label>
           <ion-select v-model="form.postType" interface="popover">
-            <ion-select-option value="Courier">Courier</ion-select-option>
             <ion-select-option value="Transport">Transport</ion-select-option>
             <ion-select-option value="Delivery">Delivery</ion-select-option>
+            <ion-select-option value="Odd Job"> Odd Job</ion-select-option>
+            <ion-select-option value="Trade">Trade</ion-select-option>
           </ion-select>
         </ion-item>
 
@@ -30,24 +31,11 @@
           <ion-input v-model="form.origin" placeholder="e.g. Addis Ababa"></ion-input>
         </ion-item>
 
-        <ion-item>
+        <ion-item v-if="form.postType !== 'Odd Job' && form.postType !== 'Trade'">
           <ion-label position="stacked">To (Destination)</ion-label>
-          <ion-input v-model="form.destination" placeholder="e.g. Mizan Teferi"></ion-input>
+          <ion-input v-model="form.destination" placeholder="e.g. Hawassa"></ion-input>
         </ion-item>
-
-        <!-- Dynamic Expiration Date -->
-        <ion-item>
-          <ion-label>Expires At</ion-label>
-          <ion-datetime-button datetime="datetime"></ion-datetime-button>
-          <ion-modal :keep-contents-on-mount="true">
-            <ion-datetime 
-              id="datetime" 
-              v-model="form.expiresAt" 
-              presentation="date-time"
-            ></ion-datetime>
-          </ion-modal>
-        </ion-item>
-
+       
         <!-- Description -->
         <ion-item>
           <ion-label position="stacked">Description</ion-label>
@@ -57,7 +45,24 @@
             :auto-grow="true"
           ></ion-textarea>
         </ion-item>
+        <ion-item>
+          <ion-label position="stacked">Price</ion-label>
+          <ion-textarea
+            v-model="form.price"
+            placeholder="1000ETB"
+            :auto-grow="true"
+          ></ion-textarea>
+        </ion-item>
       </ion-list>
+
+      <ion-modal ref="datetimeModal" :keep-contents-on-mount="true">
+        <ion-datetime 
+          id="datetime-id" 
+          v-model="form.expiresAt" 
+          presentation="date-time"
+        ></ion-datetime>
+            <input type="date" id="event-date" v-model="datetimeModal" />
+      </ion-modal>
 
       <ion-button expand="block" class="ion-margin-top" @click="handleCreateJob" :disabled="loading">
         <ion-spinner v-if="loading" name="crescent"></ion-spinner>
@@ -68,11 +73,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import { 
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, 
   IonLabel, IonInput, IonTextarea, IonSelect, IonSelectOption, IonButton, 
-  IonSpinner, IonDatetime, IonDatetimeButton, IonModal, toastController 
+  IonSpinner, IonDatetime, IonDatetimeButton, IonModal, toastController,
+  modalController
 } from '@ionic/vue';
 import { useMutation } from '@vue/apollo-composable';
 import gql from 'graphql-tag';
@@ -83,16 +89,18 @@ const router = useRouter();
 //form with empty values
 const form = ref({
   title: '',
-  postType: 'Courier',
+  postType: 'Delivery',
   origin: '',
   destination: '',
   description: '',
-  expiresAt: new Date().toISOString() // Defaults to now
+  price: '',
+  expiresAt: new Date().toISOString()
 });
 
+const datetimeModal = ref('')
 const CREATE_JOB_MUTATION = gql`
-  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $expiresAt: DateTime!) {
-    createJobPost(title: $title, postType: $postType, origin: $origin, destination: $destination, description: $description, expiresAt: $expiresAt) {
+  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $expiresAt: DateTime!, $price: String!) {
+    createJobPost(title: $title, postType: $postType, origin: $origin, destination: $destination, description: $description, expiresAt: $expiresAt, price: $price) {
       jobPost{
         description
         destination
@@ -101,6 +109,7 @@ const CREATE_JOB_MUTATION = gql`
         origin
         postType
         title
+        price
       }
     }
   }
@@ -120,9 +129,12 @@ onError(async (error) => {
 });
 
 const handleCreateJob = async () => {
-  // Logic validation
-  if (!form.value.title || !form.value.origin || !form.value.destination) {
-    alert("Please fill in all required fields.");
+  const isLocalJob = form.value.postType === 'Odd Job' || form.value.postType === 'Trade';
+  
+  if (isLocalJob) {
+    form.value.destination = form.value.origin;
+  } else if (!form.value.destination) {
+    alert("Please enter a destination.");
     return;
   }
   try{
@@ -133,6 +145,7 @@ const handleCreateJob = async () => {
       destination: form.value.destination,
       description: form.value.description,
       expiresAt: form.value.expiresAt,
+      price: form.value.price,
     });
   }catch(err){
     console.error("Job creation failed", err);
@@ -146,4 +159,6 @@ onDone((result) => {
 onError((err) => {
   console.error("Error details:", err);
 });
+
+
 </script>

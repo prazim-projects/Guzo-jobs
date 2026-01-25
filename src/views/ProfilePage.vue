@@ -135,7 +135,7 @@ import { useToast } from '@/composables/useToast'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader,
   IonCardTitle, IonCardSubtitle, IonCardContent, IonList, IonItem, IonLabel,
-  IonInput, IonTextarea, IonButton, IonAvatar, IonIcon, IonSpinner,
+  IonInput, IonTextarea, IonButton, IonButtons, IonAvatar, IonIcon, IonSpinner,
   IonImg, toastController
 } from '@ionic/vue'
 import { useRouter } from 'vue-router'
@@ -188,13 +188,21 @@ const { result, loading, error, refetch } = useQuery(GET_USER, () => ({
 
 const { mutate: editProfile, onDone, onError } = useMutation(UPDATE_PROFILE);
 
+const updating = ref(false)
+const updateError = ref(null)
+
 onDone(async () => {
-  const toast = await toastController.create({ message: 'Profile Updated successfully!', duration: 2000, color: 'success' });
-  await toast.present();
+  updating.value = false
+  updateError.value = null
+  toast?.success('Profile updated successfully!')
+  isEditing.value = false
+  refetch() // Refresh query
   router.replace('/home');
 });
 
 onError(async (error) => {
+  updating.value = false
+  updateError.value = error
   const toast = await toastController.create({ message: error.message, duration: 3000, color: 'danger' });
   await toast.present();
 });
@@ -253,20 +261,19 @@ function cancelEdit() {
 async function saveProfile() {
   if (!userId.value) return
 
+  updating.value = true
+  updateError.value = null
+
   try {
-    const { data } = await editProfile({
+    await editProfile({
       bio: form.value.bio || null,
       email: form.value.email || null,
       phoneNumber: form.value.phoneNumber || null,
       profilePicture: form.value.profilePicture || null
     })
-
-    if (data?.editProfile?.user) {
-      toast?.success('Profile updated successfully!')
-      isEditing.value = false
-      refetch() // Refresh query
-    }
   } catch (err) {
+    updating.value = false
+    updateError.value = err
     toast?.error('Failed to update profile')
     console.error(err)
   }
