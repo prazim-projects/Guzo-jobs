@@ -22,7 +22,7 @@ if (!graphqlEndpoint) {
 
 const httpLink = new HttpLink({
   uri: graphqlEndpoint,
-  credentials: 'include',
+  credentials: 'omit',
   // headers: { 'X-CSRFToken': Cookies.get('csrftoken') || '' },
 });
 

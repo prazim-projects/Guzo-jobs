@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { gql } from '@apollo/client/core'
 import { useApolloClient } from '@vue/apollo-composable'
 import { useRouter } from 'vue-router'
+import { toRaw } from 'vue'
 
 export const useAuthStore = defineStore('auth', () => {
     const token = ref<string | null>(localStorage.getItem('authToken'))
@@ -70,13 +71,14 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       const jwtToken = data.RegisterUser.token 
-      const user = data.RegisterUser.user
+      const userData = data.RegisterUser.user
       if(jwtToken){
         token.value = jwtToken
-        user.value = user
+        user.value = userData
         localStorage.setItem('authToken', jwtToken)
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('user',  JSON.stringify(toRaw(user.value)));
         isAuthenticated.value = true
+        router.push('/home')
 
       }
     } catch (error) {

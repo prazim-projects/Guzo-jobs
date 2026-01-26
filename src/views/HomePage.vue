@@ -36,11 +36,7 @@
             </ion-card-subtitle>
           </ion-card-header>
 
-          <ion-card-content>
-              {{ job.description }}
-          </ion-card-content>
-
-          <ion-card-content>
+          <ion-card-content v-if="job.postType !== 'Odd Job' && job.postType !== 'Trade'">
             <p><strong>Going To:</strong> {{ job.destination }}</p>
             <p v-if="job.expiresAt">
               <ion-icon name="time-outline" size="small"></ion-icon>
@@ -48,6 +44,12 @@
             </p>
           </ion-card-content>
 
+
+          <ion-card-content>
+              {{ job.description }}
+          </ion-card-content>
+
+          
           <!-- AUTHENTICATED USER SECTION -->
           <ion-item v-if="job.user" lines="none" class="user-info-item">
             <ion-avatar slot="start">

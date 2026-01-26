@@ -77,6 +77,9 @@ class createJobPost(graphene.Mutation):
         if user.is_anonymous:
             raise Exception("you must be logged in to create a job post.")
 
+        if (price < 0):
+            raise Exception("Money can't be less than 0 birr")
+
         jobPost = JobPosting(
             title=title,
             description=description,

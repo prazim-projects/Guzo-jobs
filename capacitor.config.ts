@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.leab.android',
-  appName: 'travelNotes',
+  appName: 'guzoJobs',
   webDir: 'dist',
   // bundledWebRuntime: false
 };
