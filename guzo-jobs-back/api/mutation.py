@@ -64,7 +64,7 @@ class createJobPost(graphene.Mutation):
         origin = graphene.String(required=True)
         destination = graphene.String(required=True)
         post_type = graphene.String(required=True)
-        price = graphene.String(required=True)
+        price = graphene.Int(required=True)
 
     jobPost = graphene.Field(JobPostingType)
 
@@ -72,7 +72,7 @@ class createJobPost(graphene.Mutation):
     def mutate(cls, root, info, title, description, expires_at, origin, destination, post_type, price):
         # print(f"DEBUG: Auth Header -> {info.context.META.get('HTTP_AUTHORIZATION')}")
         # print(f"DEBUG: User in Context -> {info.context.user}")
-
+        price = int(price) 
         user = info.context.user
         if user.is_anonymous:
             raise Exception("you must be logged in to create a job post.")

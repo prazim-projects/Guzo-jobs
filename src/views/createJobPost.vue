@@ -48,7 +48,8 @@
         <ion-item>
           <ion-label position="stacked">Price</ion-label>
           <ion-textarea
-            v-model="form.price"
+            type="number"
+            v-model.number="form.price"
             placeholder="1000ETB"
             :auto-grow="true"
           ></ion-textarea>
@@ -93,13 +94,13 @@ const form = ref({
   origin: '',
   destination: '',
   description: '',
-  price: '',
+  price: 0,
   expiresAt: new Date().toISOString()
 });
 
 const datetimeModal = ref('')
 const CREATE_JOB_MUTATION = gql`
-  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $expiresAt: DateTime!, $price: String!) {
+  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $expiresAt: DateTime!, $price: Int!) {
     createJobPost(title: $title, postType: $postType, origin: $origin, destination: $destination, description: $description, expiresAt: $expiresAt, price: $price) {
       jobPost{
         description
