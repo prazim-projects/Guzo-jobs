@@ -6,3 +6,7 @@ from .models import *
 admin.site.register(UserProfile)
 admin.site.register(JobPosting)
 admin.site.register(Contract)
+admin.site.register(EscrowPayment)
+admin.site.register(Notification)
+admin.site.register(Complaint)
+admin.site.register(SupportTicket)
