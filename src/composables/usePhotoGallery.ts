@@ -1,94 +1,42 @@
-import { ref, onMounted, watch } from 'vue';
-import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Preferences } from '@capacitor/preferences';
+import { onMounted, ref, watch } from 'vue';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { loadCachedPhotos, persistPhotos, savePhoto, type StoredPhoto } from '@/utils/photoStorage';
 
-export interface UserPhoto {
-  filepath: string;
-  webviewPath?: string;
-}
-
-const PHOTO_STORAGE = 'photos';  //storage path
+export type UserPhoto = StoredPhoto;
 
 export const usePhotoGallery = () => {
+  const photos = ref<UserPhoto[]>([]);
 
-    const photos = ref<UserPhoto[]>([]); //photo array aka gallery
-    //load cached photo array from storage on component mount
+  const cachePhotos = async () => {
+    await persistPhotos(photos.value);
+  };
 
-    const cachePhotos = () => {
-        Preferences.set({
-            key: PHOTO_STORAGE,
-            value: JSON.stringify(photos.value)
-        });
-    };
+  const takePhoto = async () => {
+    const photo = await Camera.getPhoto({
+      resultType: CameraResultType.Uri,
+      source: CameraSource.Camera,
+      quality: 90,
+    });
 
-
-    //  Whenever the array is modified (taking or deleting photos)
-    //  trigger the cachePhotos
-
-
-    const takePhoto = async () => {
-        const photo = await Camera.getPhoto({
-            resultType: CameraResultType.Uri,
-            source: CameraSource.Camera,
-            quality: 90,
-        });
-    
-
-    const fileName = Date.now() + '.jpeg';
-    const savedFileImage = await savePicture(photo, fileName)
-    
-    const loadSaved = async () => {
-        const photoList = await Preferences.get({ key: PHOTO_STORAGE });
-        const photosInPreferences = photoList.value ? JSON.parse(photoList.value) : [];
-
-        for (const photo of photosInPreferences) {
-            const file = await Filesystem.readFile({
-            path: photo.filepath,
-            directory: Directory.Data,
-        });
-        
-        photo.webviewPath = `data:image/jpeg;base64,${file.data}`;
-    } 
-    photos.value = photosInPreferences;
-    };
-
-    watch(photos, cachePhotos, { deep: true });
-    onMounted(loadSaved);
-
+    const fileName = `${Date.now()}.jpeg`;
+    const savedFileImage = await savePhoto(photo, fileName);
     photos.value = [savedFileImage, ...photos.value];
   };
 
+  const loadSaved = async () => {
+    photos.value = await loadCachedPhotos();
+  };
+
+  watch(photos, () => {
+    void cachePhotos();
+  }, { deep: true });
+
+  onMounted(() => {
+    void loadSaved();
+  });
+
   return {
     takePhoto,
-    photos
+    photos,
   };
 };
-
-
-const convertBlobToBase64 = (blob: Blob) =>
-    new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = reject;
-        reader.onload = () => {
-            resolve(reader.result);
-        };
-        reader.readAsDataURL(blob);
-});
-
-const savePicture = async (photo: Photo, fileName: string): Promise<UserPhoto> => {
-    const response = await fetch(photo.webPath!);
-    const blob = await response.blob();
-    const base64Data = (await convertBlobToBase64(blob)) as string;
-
-    const savedFile = await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: Directory.Data
-    });
-
-    return {
-        filepath: savedFile.uri,
-        webviewPath: photo.webPath
-    };
-}
