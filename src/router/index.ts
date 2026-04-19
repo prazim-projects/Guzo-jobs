@@ -1,5 +1,5 @@
 // src/router/index.ts
-import { createRouter, createWebHistory } from '@ionic/vue-router'
+import { createRouter, createWebHashHistory } from '@ionic/vue-router'
 import { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/userStore';
 
@@ -11,6 +11,8 @@ const routes: Array<RouteRecordRaw> = [
       { path: '', redirect: '/home' },
       { path: 'home', component: () => import('@/views/HomePage.vue') },
       { path: 'myJobs', component: () => import('@/views/myJobs.vue'), meta: { requiresAuth: true } },
+      { path: 'notifications', component: () => import('@/views/NotificationsPage.vue'), meta: { requiresAuth: true } },
+      { path: 'support', component: () => import('@/views/SupportPage.vue'), meta: { requiresAuth: true } },
       { path: 'add', component: () => import('@/views/NotePage.vue'), meta: { requiresAuth: true } },
       { path: 'login', component: () => import('@/views/login.vue') },
       { path: 'signup', component: () => import('@/views/register.vue') },
@@ -28,7 +30,7 @@ const routes: Array<RouteRecordRaw> = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes
 })
 

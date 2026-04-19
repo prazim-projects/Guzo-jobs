@@ -15,6 +15,9 @@
     </ion-header>
 
     <ion-content :fullscreen="true" class="ion-padding">
+      <ion-refresher slot="fixed" @ionRefresh="doRefresh($event)">
+        <ion-refresher-content pulling-text="Pull to refresh" refreshing-spinner="circles" refreshing-text="Updating data..."></ion-refresher-content>
+      </ion-refresher>
       <!-- Loading -->
       <div v-if="loading || updating" class="ion-text-center ion-padding">
         <ion-spinner name="crescent"></ion-spinner>
@@ -24,7 +27,7 @@
       <!-- Error -->
       <ion-card v-else-if="error || updateError" color="danger">
         <ion-card-content class="ion-text-center">
-          <p>{{ error?.message || updateError?.message || 'Failed to load/save profile' }}</p>
+          <p>{{ error?.message || updateErrorMessage || 'Failed to load/save profile' }}</p>
           <ion-button color="light" @click="refetch">Retry</ion-button>
         </ion-card-content>
       </ion-card>
@@ -73,7 +76,7 @@
                 <ion-textarea
                   v-if="isEditing"
                   v-model="form.bio"
-                  rows="5"
+                  :rows="5"
                   auto-grow
                   placeholder="Write something about yourself..."
                 ></ion-textarea>
@@ -89,7 +92,6 @@
                   v-if="isEditing"
                   v-model="form.profilePicture"
                   placeholder="https://example.com/your-photo.jpg"
-                  @ionInput="previewImage"
                 ></ion-input>
                 <ion-label v-else class="ion-text-wrap">
                   {{ form.profilePicture ? 'Image set' : 'No picture' }}
@@ -105,13 +107,42 @@
 
             <!-- Action Buttons (edit mode only) -->
             <div v-if="isEditing" class="ion-margin-top ion-text-center">
-              <ion-button expand="block" color="success" @click="saveProfile" :disabled="saving || !isFormValid">
+              <ion-button expand="block" color="success" @click="saveProfile" :disabled="updating || !isFormValid">
                 Save Changes
               </ion-button>
-              <ion-button expand="block" fill="clear" @click="cancelEdit" :disabled="saving">
+              <ion-button expand="block" fill="clear" @click="cancelEdit" :disabled="updating">
                 Cancel
               </ion-button>
             </div>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>Quick Actions</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-button expand="block" fill="outline" @click="switchLanguage">{{ languageButtonLabel }}</ion-button>
+            <ion-button expand="block" fill="outline" router-link="/notifications" class="notification-quick-action">
+              Notifications
+              <ion-badge v-if="unreadNotificationsCount > 0" color="danger" class="quick-action-badge">
+                {{ unreadNotificationsCount }}
+              </ion-badge>
+            </ion-button>
+            <ion-button expand="block" fill="outline" router-link="/support">Support</ion-button>
+            <ion-button expand="block" fill="outline" router-link="/mapET">Map</ion-button>
+            <ion-button expand="block" color="medium" router-link="/logout">Logout</ion-button>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="ion-margin-top">
+          <ion-card-header>
+            <ion-card-title>Platform Transaction Summary</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <p><strong>Total Paid to Escrow:</strong> {{ transactionSummary.totalPaid.toFixed(2) }} Birr</p>
+            <p><strong>Total Received (Released):</strong> {{ transactionSummary.totalReceived.toFixed(2) }} Birr</p>
+            <p><strong>Total Transacted:</strong> {{ transactionSummary.totalTransacted.toFixed(2) }} Birr</p>
           </ion-card-content>
         </ion-card>
       </div>
@@ -132,11 +163,12 @@ import { useQuery, useMutation } from '@vue/apollo-composable'
 import { gql } from '@apollo/client/core'
 import { useAuthStore } from '@/stores/userStore'
 import { useToast } from '@/composables/useToast'
+import { currentLanguage, t, toggleLanguage } from '@/utils/i18n'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader,
   IonCardTitle, IonCardSubtitle, IonCardContent, IonList, IonItem, IonLabel,
   IonInput, IonTextarea, IonButton, IonButtons, IonAvatar, IonIcon, IonSpinner,
-  IonImg, toastController
+  IonImg, IonRefresher, IonRefresherContent, RefresherCustomEvent, toastController
 } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import { pencil, close, alertCircleOutline } from 'ionicons/icons'
@@ -153,6 +185,11 @@ const GET_USER = gql`
       phoneNumber
       bio
       profilePicture
+    }
+    myTransactionSummary {
+      totalPaid
+      totalReceived
+      totalTransacted
     }
   }
 `
@@ -172,6 +209,15 @@ const UPDATE_PROFILE = gql`
   }
 `
 
+const MY_NOTIFICATIONS = gql`
+  query MyNotificationsForBadge {
+    myNotifications {
+      id
+      isRead
+    }
+  }
+`
+
 const authStore = useAuthStore()
 const toast = useToast()
 
@@ -184,12 +230,17 @@ const { result, loading, error, refetch } = useQuery(GET_USER, () => ({
   enabled: !!userId.value
 }))
 
+const { result: notificationResult, refetch: refetchNotifications } = useQuery(MY_NOTIFICATIONS, null, {
+  fetchPolicy: 'cache-first',
+})
+
 
 
 const { mutate: editProfile, onDone, onError } = useMutation(UPDATE_PROFILE);
 
 const updating = ref(false)
-const updateError = ref(null)
+const updateError = ref<Error | null>(null)
+const updateErrorMessage = computed(() => updateError.value?.message || '')
 
 onDone(async () => {
   updating.value = false
@@ -220,6 +271,51 @@ const form = ref({
 })
 
 const userData = computed(() => result.value?.userById)
+const unreadNotificationsCount = computed(() => {
+  const list = notificationResult.value?.myNotifications || []
+  return list.filter((item: { isRead: boolean }) => !item.isRead).length
+})
+
+const transactionSummary = computed(() => {
+  const summary = result.value?.myTransactionSummary
+  return {
+    totalPaid: Number(summary?.totalPaid || 0),
+    totalReceived: Number(summary?.totalReceived || 0),
+    totalTransacted: Number(summary?.totalTransacted || 0),
+  }
+})
+
+const languageButtonLabel = computed(() => {
+  return currentLanguage.value === 'en' ? t('lang_switch_to_am') : t('lang_switch_to_en')
+})
+
+const switchLanguage = async () => {
+  toggleLanguage()
+  const notice = await toastController.create({
+    message: t('refresh_notice'),
+    duration: 2200,
+    color: 'primary',
+    position: 'bottom',
+    positionAnchor: 'main-tab-bar',
+  })
+  await notice.present()
+}
+
+const doRefresh = async (event: RefresherCustomEvent) => {
+  try {
+    await Promise.all([refetch(), refetchNotifications()])
+    const notice = await toastController.create({
+      message: `${t('refresh_done')} ${t('refresh_notice')}`,
+      duration: 2200,
+      color: 'success',
+      position: 'bottom',
+      positionAnchor: 'main-tab-bar',
+    })
+    await notice.present()
+  } finally {
+    event.target.complete()
+  }
+}
 
 // Sync form when data loads
 watch(userData, (newUser) => {
@@ -273,7 +369,7 @@ async function saveProfile() {
     })
   } catch (err) {
     updating.value = false
-    updateError.value = err
+    updateError.value = err instanceof Error ? err : new Error(String(err))
     toast?.error('Failed to update profile')
     console.error(err)
   }
@@ -311,5 +407,13 @@ const defaultAvatar = 'https://ui-avatars.com/api/?name=User&background=random'
 .profile-name {
   font-size: 1.8rem;
   font-weight: bold;
+}
+
+.notification-quick-action {
+  position: relative;
+}
+
+.quick-action-badge {
+  margin-left: 8px;
 }
 </style>

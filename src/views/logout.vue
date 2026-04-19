@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { IonPage, IonContent, IonButton } from '@ionic/vue';
+import { IonPage, IonContent, IonButton, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton } from '@ionic/vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/userStore';
 
@@ -20,6 +20,14 @@ const handleLogout = async () => {
 
 <template>
     <ion-page>
+    <ion-header>
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-back-button default-href="/profile"></ion-back-button>
+        </ion-buttons>
+        <ion-title>Logout</ion-title>
+      </ion-toolbar>
+    </ion-header>
         <ion-content class="ion-padding">
             <h1>Logout Page</h1>
             <p>Are you sure you want to logout?</p>

@@ -2,6 +2,9 @@
   <ion-page>
     <ion-header v-if="!isFullscreen">
       <ion-toolbar color="primary">
+        <ion-buttons slot="start">
+          <ion-back-button default-href="/profile"></ion-back-button>
+        </ion-buttons>
         <ion-title>Map of Ethiopia</ion-title>
         <ion-buttons slot="end">
           <ion-button @click="toggleFullscreen">
@@ -12,6 +15,9 @@
     </ion-header>
 
     <ion-content :fullscreen="true" :class="{ 'fullscreen-map': isFullscreen }">
+      <ion-refresher slot="fixed" @ionRefresh="doRefresh($event)">
+        <ion-refresher-content pulling-text="Pull to refresh" refreshing-spinner="circles" refreshing-text="Updating map..."></ion-refresher-content>
+      </ion-refresher>
       <div ref="mapContainer" class="map-container"></div>
     </ion-content>
 
@@ -29,14 +35,20 @@ import {
   IonToolbar,
   IonTitle,
   IonButtons,
+  IonBackButton,
   IonButton,
   IonIcon,
   IonContent,
+  IonRefresher,
+  IonRefresherContent,
   IonFooter,
+  RefresherCustomEvent,
+  toastController,
   onIonViewDidEnter,
   onIonViewWillLeave,
 } from '@ionic/vue';
 import { expandOutline, contractOutline } from 'ionicons/icons';
+import { t } from '@/utils/i18n';
 
 let map: LeafletMap | null = null;
 const mapContainer = ref<HTMLDivElement | null>(null);
@@ -105,6 +117,25 @@ const toggleFullscreen = () => {
   setTimeout(() => {
     if (map) map.invalidateSize();
   }, 100); // Shorter delay for mobile responsiveness
+};
+
+const doRefresh = async (event: RefresherCustomEvent) => {
+  try {
+    if (map) {
+      map.invalidateSize();
+      map.setZoom(map.getZoom());
+    }
+    const toast = await toastController.create({
+      message: `${t('refresh_done')} ${t('refresh_notice')}`,
+      duration: 2200,
+      color: 'success',
+      position: 'bottom',
+      positionAnchor: 'main-tab-bar',
+    });
+    await toast.present();
+  } finally {
+    event.target.complete();
+  }
 };
 
 // Ionic lifecycle: Init on view enter, destroy on leave

@@ -1,7 +1,7 @@
 <template>
     <ion-tabs>
     <ion-router-outlet></ion-router-outlet>
-    <ion-tab-bar slot="bottom">
+      <ion-tab-bar id="main-tab-bar" slot="bottom">
         <ion-tab-button
           v-for="route in authTabs"
           :key="route.path"
@@ -16,7 +16,7 @@
   </ion-tabs>
 </template>
 
-<script setup type="ts">
+<script setup lang="ts">
 import { IonIcon, IonTabButton, IonTabs, IonTabBar, IonLabel, IonRouterOutlet } from '@ionic/vue';
 import { useAuthStore } from '../stores/userStore';
 import { computed } from 'vue';
@@ -33,11 +33,9 @@ const authTabs = computed(() => {
   if (authStore.isAuthenticated) {
     return [
       ...navRoutes,  
-        { path: '/myJobs', label: 'My Jobs', icon: 'briefcase-outline' },
-        { path: '/postJob', label: 'Post Job', icon: 'add-circle-outline' },
-        { path: '/profile', label: 'Profile', icon: 'person-circle-outline' },
-        { path: '/mapET', label: 'Map ET', icon: 'map-outline' },
-        {path: '/logout', label: 'Logout', icon: 'log-out-outline' },
+      { path: '/myJobs', label: 'Jobs', icon: 'briefcase-outline' },
+      { path: '/postJob', label: 'Post', icon: 'add-circle-outline' },
+      { path: '/profile', label: 'Me', icon: 'person-circle-outline' },
   ]
   } else {
     return [
@@ -49,3 +47,13 @@ const authTabs = computed(() => {
 });
 
 </script>
+
+<style scoped>
+ion-tab-bar {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+ion-label {
+  font-size: 0.72rem;
+}
+</style>
