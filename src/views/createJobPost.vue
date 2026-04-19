@@ -47,23 +47,36 @@
         </ion-item>
         <ion-item>
           <ion-label position="stacked">Price</ion-label>
-          <ion-textarea
+          <ion-input
+            v-model="priceInput"
             type="number"
-            v-model.number="form.price"
-            placeholder="1000ETB"
-            :auto-grow="true"
-          ></ion-textarea>
+            inputmode="decimal"
+            placeholder="1000 ETB"
+          ></ion-input>
         </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Product Image (optional)</ion-label>
+          <div class="image-actions">
+            <ion-button size="small" fill="outline" @click="captureProductImage" :disabled="capturing">
+              Capture Photo
+            </ion-button>
+            <ion-button size="small" fill="outline" @click="pickProductImage" :disabled="capturing">
+              Choose From Gallery
+            </ion-button>
+          </div>
+          <input type="file" accept="image/*" @change="onImageSelected" />
+        </ion-item>
+
+        <div v-if="form.productImage" class="preview-frame">
+          <img :src="form.productImage" alt="Product preview" class="preview-image" loading="lazy" />
+        </div>
       </ion-list>
 
-      <ion-modal ref="datetimeModal" :keep-contents-on-mount="true">
-        <ion-datetime 
-          id="datetime-id" 
-          v-model="form.expiresAt" 
-          presentation="date-time"
-        ></ion-datetime>
-            <input type="date" id="event-date" v-model="datetimeModal" />
-      </ion-modal>
+      <ion-item>
+        <ion-label position="stacked">Expires At</ion-label>
+        <ion-datetime v-model="form.expiresAt" presentation="date-time"></ion-datetime>
+      </ion-item>
 
       <ion-button expand="block" class="ion-margin-top" @click="handleCreateJob" :disabled="loading">
         <ion-spinner v-if="loading" name="crescent"></ion-spinner>
@@ -74,16 +87,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue';
+import { computed, ref } from 'vue';
 import { 
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, 
   IonLabel, IonInput, IonTextarea, IonSelect, IonSelectOption, IonButton, 
-  IonSpinner, IonDatetime, IonDatetimeButton, IonModal, toastController,
-  modalController
+  IonSpinner, IonDatetime, toastController
 } from '@ionic/vue';
 import { useMutation } from '@vue/apollo-composable';
 import gql from 'graphql-tag';
 import { useRouter } from 'vue-router';
+import { useNativeImageCapture } from '@/composables/useNativeImageCapture';
 
 const router = useRouter();
 
@@ -94,20 +107,30 @@ const form = ref({
   origin: '',
   destination: '',
   description: '',
+  productImage: '',
   price: 0,
   expiresAt: new Date().toISOString()
 });
 
-const datetimeModal = ref('')
+const priceInput = computed({
+  get: () => String(form.value.price || ''),
+  set: (value: string) => {
+    form.value.price = Number(value) || 0;
+  }
+});
+
+const { imageDataUrl, capturing, captureFromCamera, pickFromGallery } = useNativeImageCapture();
+
 const CREATE_JOB_MUTATION = gql`
-  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $expiresAt: DateTime!, $price: Int!) {
-    createJobPost(title: $title, postType: $postType, origin: $origin, destination: $destination, description: $description, expiresAt: $expiresAt, price: $price) {
+  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $productImage: String, $expiresAt: DateTime!, $price: Int!) {
+    createJobPost(title: $title, postType: $postType, origin: $origin, destination: $destination, description: $description, productImage: $productImage, expiresAt: $expiresAt, price: $price) {
       jobPost{
         description
         destination
         expiresAt
         id
         origin
+        productImage
         postType
         title
         price
@@ -129,6 +152,31 @@ onError(async (error) => {
   await toast.present();
 });
 
+const onImageSelected = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    form.value.productImage = String(reader.result || '');
+    imageDataUrl.value = form.value.productImage;
+  };
+  reader.readAsDataURL(file);
+};
+
+const applyCapturedImage = async (action: () => Promise<{ dataUrl: string; mimeType: string } | null>) => {
+  const result = await action();
+  if (result?.dataUrl) {
+    form.value.productImage = result.dataUrl;
+  }
+};
+
+const captureProductImage = () => applyCapturedImage(captureFromCamera);
+const pickProductImage = () => applyCapturedImage(pickFromGallery);
+
 const handleCreateJob = async () => {
   const isLocalJob = form.value.postType === 'Odd Job' || form.value.postType === 'Trade';
   
@@ -145,6 +193,7 @@ const handleCreateJob = async () => {
       origin: form.value.origin,
       destination: form.value.destination,
       description: form.value.description,
+      productImage: form.value.productImage || null,
       expiresAt: form.value.expiresAt,
       price: form.value.price,
     });
@@ -153,13 +202,29 @@ const handleCreateJob = async () => {
   }
 };
 
-onDone((result) => {
-  console.log("Mutation finished:", result.data);
-});
-
-onError((err) => {
-  console.error("Error details:", err);
-});
-
 
 </script>
+
+<style scoped>
+.preview-image {
+  width: 100%;
+  height: 160px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #f4f6f8;
+}
+
+.preview-frame {
+  margin-top: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.image-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+</style>

@@ -23,9 +23,10 @@
         <ion-card class="job-card">
           <!-- Dynamic Image -->
           <img
-            :src="`https://picsum.photos/seed/${encodeURIComponent(job.postType)}${encodeURI(job.origin)}/500/300`"
+            :src="resolveJobImage(job)"
             :alt="'Image for trip to ' + job.destination"
             class="card-image"
+            loading="lazy"
           />
 
           <ion-card-header>
@@ -65,22 +66,27 @@
               expand="block" 
               color="success" 
               class="ion-no-margin"
-              @click="handleAcceptJob(job.id, 'PENDING')"
-              v-if="job.user && job.user.id !== authStore.user?.id && !hasUserApplied(job)">
+              @click="handleAcceptJob(job.id)"
+              v-if="job.user && !isCurrentUserId(job.user.id, authStore.user?.id) && !hasUserApplied(job)">
                 <ion-icon slot="start" :icon="checkmarkCircle"></ion-icon>
                 Accept Job
               </ion-button>
-    
-            <ion-badge v-else-if="job.user && hasUserApplied(job)" color="warning" expand="block" mode="ios" class="full-width-badge">
-              <ion-icon slot="start" name="time-outline"></ion-icon>
-              Application Pending
-            </ion-badge>
+
+            <ion-button
+              v-else-if="job.user && hasUserApplied(job)"
+              expand="block"
+              color="danger"
+              class="ion-no-margin"
+              @click="cancelApplication(job)"
+            >
+              Cancel Request
+            </ion-button>
     
             <ion-badge v-else-if="job.user" color="light" expand="block" mode="ios" class="full-width-badge">
               Your Post
             </ion-badge>
           </div>
-          <div v-if="job.user?.id === authStore.user?.id" class="ion-padding">
+          <div v-if="job.user && isCurrentUserId(job.user.id, authStore.user?.id)" class="ion-padding">
             <div v-for="contract in job.contracts?.filter(c => c.status === 'PENDING')" :key="contract.id" class="approval-box">
               <ion-item lines="none" color="light">
                 <ion-icon slot="start" :icon="alertCircleOutline" color="warning"></ion-icon>
@@ -91,13 +97,14 @@
               </ion-item>
               
               <div class="contract-actions">
-                <ion-button size="small" color="primary" @click="handleJobConfirmation(contract.id)">
+                <ion-button size="small" color="primary" @click="handleJobConfirmation(contract)">
                   Confirm {{ contract.acceptor.username }}
                 </ion-button>
                 <ion-button size="small" color="danger" @click="handleJobRejection(contract.id)">
                   Reject
                 </ion-button>
               </div>
+              <div class="acceptance-pulse" aria-hidden="true"></div>
             </div>
           </div>
         </ion-card>
@@ -136,7 +143,6 @@ import {
   IonIcon,
   IonText,
   IonButton,
-  IonButtons,
   IonRefresher,
   IonRefresherContent,
   RefresherCustomEvent,
@@ -144,10 +150,11 @@ import {
   IonItem
 } from '@ionic/vue'
 
-import { callOutline, call, chatbubble, share, compass, checkmarkCircle, timeOutline, alertCircleOutline } from 'ionicons/icons'
-import { useRouter } from 'vue-router'
+import { checkmarkCircle, alertCircleOutline } from 'ionicons/icons'
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/userStore'
+import { isCurrentUserId, resolveJobImage } from '@/utils/jobHelpers'
+import { t } from '@/utils/i18n'
 
 const authStore = useAuthStore()
 const { client } = useApolloClient()
@@ -160,6 +167,7 @@ export interface Job {
   postType: string;
   origin: string;
   destination: string;
+  productImage?: string;
   price?: number;
   user?: {
     id: string;
@@ -170,6 +178,9 @@ export interface Job {
   contracts?: Array<{
     id: string;
     status: string;
+    poster?: {
+      id: string;
+    };
     acceptor: {
       id: string;
       username: string;
@@ -188,8 +199,6 @@ const formatDate = (dateStr: string): string => {
   return format(date, 'PPP')
 }
 
-const router = useRouter()
-
 const CONFIRM_JOB_ACCEPTANCE = gql`
   mutation confirmJobContract($contractId: ID!) {
     confirmJobContract(contractId: $contractId) {
@@ -206,12 +215,22 @@ const REJECT_JOB_APPLICATION = gql`
   }
 `;
 
+const CANCEL_JOB_APPLICATION = gql`
+  mutation rejectJobApplication($contractId: ID!) {
+    rejectJobApplication(contractId: $contractId) {
+      success
+    }
+  }
+`;
+
 const ACCEPT_JOB_MUTATION = gql`
-  mutation acceptJobPost($jobPostId: ID!, $status: String!) {
-    acceptJobPost(jobPostId: $jobPostId, status: $status) {
+  mutation acceptJobPost($jobPostId: ID!, $status: String!, $preferredPaymentMethod: String, $preferredChapaBank: String) {
+    acceptJobPost(jobPostId: $jobPostId, status: $status, preferredPaymentMethod: $preferredPaymentMethod, preferredChapaBank: $preferredChapaBank) {
       contract {
         id
         agreedPrice
+        preferredPaymentMethod
+        preferredChapaBank
         jobPost {
           id
           title
@@ -236,6 +255,7 @@ const JOB_QUERY = gql`
       postType
       origin
       destination
+      productImage
       
     }
   }
@@ -251,16 +271,19 @@ const JOB_QUERY_AUTHENTICATED = gql`
       postType
       origin
       destination
+      productImage
       price
       user {
         id
         username
-        phoneNumber
         profilePicture
       }
       contracts {
         id
         status
+        poster {
+          id
+        }
         acceptor {
           id
           username
@@ -270,18 +293,36 @@ const JOB_QUERY_AUTHENTICATED = gql`
   }
 `;
 
-const handleJobConfirmation = async (contractId: string) => {
+const handleJobConfirmation = async (contract: NonNullable<Job['contracts']>[number]) => {
+  if (!isCurrentUserId(contract.poster?.id, authStore.user?.id)) {
+    const toast = await toastController.create({
+      message: 'Only the owner of this job can accept applicants.',
+      duration: 2200,
+      color: 'warning',
+      position: 'bottom',
+      positionAnchor: 'main-tab-bar'
+    });
+    await toast.present();
+    return;
+  }
+
   try {
     const result = await client.mutate({
       mutation: CONFIRM_JOB_ACCEPTANCE,
       variables: {
-        contractId: contractId
+        contractId: contract.id
       }
     });
     console.log('Job confirmed:', result);
-    const toast = await toastController.create({ message: 'Job Confirmed successfully!', duration: 2000, color: 'success' });
+    const toast = await toastController.create({
+      message: 'Job confirmed. Request poster to fund escrow via Telebirr before work starts.',
+      duration: 2800,
+      color: 'success',
+      position: 'bottom',
+      positionAnchor: 'main-tab-bar'
+    });
     await toast.present();
-    router.replace('/home');
+    await hardRefreshData();
   } catch (error) {
     console.error('Error confirming job:', error);
     const message = error instanceof Error ? error.message : String(error);
@@ -301,7 +342,7 @@ const handleJobRejection = async (contractId: string) => {
     console.log('Job rejected:', result);
     const toast = await toastController.create({ message: 'Application rejected!', duration: 2000, color: 'warning' });
     await toast.present();
-    router.replace('/home');
+    await hardRefreshData();
   } catch (error) {
     console.error('Error rejecting job:', error);
     const message = error instanceof Error ? error.message : String(error);
@@ -312,25 +353,65 @@ const handleJobRejection = async (contractId: string) => {
 
 const hasUserApplied = (job: Job): boolean => {
   return job.contracts?.some(contract => 
-    contract.acceptor?.id === authStore.user?.id && contract.status === 'PENDING'
+    isCurrentUserId(contract.acceptor?.id, authStore.user?.id) && contract.status === 'PENDING'
   ) || false;
 };
 
-const handleAcceptJob = async (jobId: string, status: string) => {
+const getPendingApplicationContractId = (job: Job): string | undefined => {
+  return job.contracts?.find((contract) => isCurrentUserId(contract.acceptor?.id, authStore.user?.id) && contract.status === 'PENDING')?.id;
+};
+
+const handleAcceptJob = async (jobId: string) => {
   try {
     const result = await client.mutate({
       mutation: ACCEPT_JOB_MUTATION,
       variables: {
         jobPostId: jobId,
-        status: "PENDING"
+        status: "PENDING",
+        preferredPaymentMethod: 'TELEBIRR',
+        preferredChapaBank: null,
       }
     });
     console.log('Job accepted:', result);
-    const toast = await toastController.create({ message: 'Applied to Job successfully! Waiting for Confimarion from owner', duration: 2000, color: 'success' });
+    const toast = await toastController.create({
+      message: 'Applied successfully. Waiting for owner confirmation.',
+      duration: 2000,
+      color: 'success',
+      position: 'bottom',
+      positionAnchor: 'main-tab-bar'
+    });
     await toast.present();
-    router.replace('/home');
+    await hardRefreshData();
   } catch (error) {
     console.error('Error accepting job:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const toast = await toastController.create({ message, duration: 3000, color: 'danger' });
+    await toast.present();
+  }
+};
+
+const cancelApplication = async (job: Job) => {
+  const contractId = getPendingApplicationContractId(job);
+  if (!contractId) {
+    return;
+  }
+
+  try {
+    await client.mutate({
+      mutation: CANCEL_JOB_APPLICATION,
+      variables: { contractId },
+    });
+
+    const toast = await toastController.create({
+      message: 'Request canceled.',
+      duration: 1800,
+      color: 'danger',
+      position: 'bottom',
+      positionAnchor: 'main-tab-bar'
+    });
+    await toast.present();
+    await hardRefreshData();
+  } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const toast = await toastController.create({ message, duration: 3000, color: 'danger' });
     await toast.present();
@@ -344,13 +425,24 @@ const currentQuery = computed(() => {
     : JOB_QUERY;
 });
 
+const hardRefreshData = async () => {
+  await refetch();
+};
+
 
 const doRefresh = async (event: RefresherCustomEvent) => {
   console.log('Refreshing data...');
 
   try {
-    // refetch() returns a promise that resolves when the network call finishes
-    await refetch();
+    await hardRefreshData();
+    const toast = await toastController.create({
+      message: `${t('refresh_done')} ${t('refresh_notice')}`,
+      duration: 2200,
+      color: 'success',
+      position: 'bottom',
+      positionAnchor: 'main-tab-bar'
+    });
+    await toast.present();
     console.log('Data successfully updated');
   } catch (err) {
     console.error('Refetch failed', err);
@@ -359,12 +451,10 @@ const doRefresh = async (event: RefresherCustomEvent) => {
   }
 };
 
-const fetchDataFromServer = async () => {
-  return new Promise((resolve) => setTimeout(resolve, 2000));
-};
-
-
-const { result, loading, error, refetch } = useQuery<AllJobsQuery>(currentQuery);
+const { result, loading, error, refetch } = useQuery<AllJobsQuery>(currentQuery, null, {
+  fetchPolicy: 'cache-first',
+  pollInterval: 180000,
+});
 console.log('Query Data:', result);
 
 
@@ -407,6 +497,7 @@ console.log('Query Data:', result);
 .job-card {
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
 }
 
 .full-width-badge {
@@ -430,9 +521,31 @@ ion-card:hover {
 }
 ion-card img {
   width: 100%;
-  height: 180px;
+  height: 140px;
   object-fit: cover;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
+}
+
+.card-image {
+  display: block;
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+}
+
+.acceptance-pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--ion-color-warning);
+  margin: 10px auto 0;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.35; }
+  100% { transform: scale(0.95); opacity: 1; }
 }
 </style>

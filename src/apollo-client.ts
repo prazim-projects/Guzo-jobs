@@ -14,10 +14,11 @@ const defaultOptions: DefaultOptions = {
   },
 };
 
-const graphqlEndpoint: string | undefined = import.meta.env.VITE_GRAPHQL_ENDPOINT;
+const devFallbackEndpoint = localStorage.getItem('graphqlEndpoint') || 'http://10.0.2.2:8000/graphql';
+const graphqlEndpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || (import.meta.env.DEV ? devFallbackEndpoint : '');
 
 if (!graphqlEndpoint) {
-  throw new Error('GraphQL endpoint is not defined in environment variables.');
+  throw new Error('Set VITE_GRAPHQL_ENDPOINT for production builds.');
 }
 
 const httpLink = new HttpLink({
