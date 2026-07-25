@@ -21,7 +21,17 @@
 
           <ion-item>
             <ion-label position="floating">Password</ion-label>
-            <ion-input v-model="user.password" type="password" required></ion-input>
+            <ion-input v-model="user.password" :type="showPassword ? 'text' : 'password'" required></ion-input>
+            <ion-button
+              slot="end"
+              fill="clear"
+              size="small"
+              type="button"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              @click="showPassword = !showPassword"
+            >
+              <ion-icon :icon="showPassword ? eyeOffOutline : eyeOutline"></ion-icon>
+            </ion-button>
           </ion-item>
 
           <ion-button expand="block" @click="handleLogin" class="ion-margin-top">Login</ion-button>
@@ -66,7 +76,9 @@ import {
   IonLabel,
   IonInput,
   IonButton,
+  IonIcon,
 } from '@ionic/vue';
+import { eyeOffOutline, eyeOutline } from 'ionicons/icons';
 import { useAuthStore } from '@/stores/userStore';
 
 const router = useRouter();
@@ -76,6 +88,8 @@ const user = ref({
   username: '',
   password: '',
 });
+
+const showPassword = ref(false);
 
 
 const handleLogin = async () => {

@@ -122,15 +122,14 @@ const priceInput = computed({
 const { imageDataUrl, capturing, captureFromCamera, pickFromGallery } = useNativeImageCapture();
 
 const CREATE_JOB_MUTATION = gql`
-  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $productImage: String, $expiresAt: DateTime!, $price: Int!) {
-    createJobPost(title: $title, postType: $postType, origin: $origin, destination: $destination, description: $description, productImage: $productImage, expiresAt: $expiresAt, price: $price) {
+  mutation createJobPost($title: String!, $postType: String!, $origin: String!, $destination: String!, $description: String!, $expiresAt: DateTime!, $price: Int!) {
+    createJobPost(title: $title, postType: $postType, origin: $origin, destination: $destination, description: $description, expiresAt: $expiresAt, price: $price) {
       jobPost{
         description
         destination
         expiresAt
         id
         origin
-        productImage
         postType
         title
         price
@@ -193,7 +192,6 @@ const handleCreateJob = async () => {
       origin: form.value.origin,
       destination: form.value.destination,
       description: form.value.description,
-      productImage: form.value.productImage || null,
       expiresAt: form.value.expiresAt,
       price: form.value.price,
     });

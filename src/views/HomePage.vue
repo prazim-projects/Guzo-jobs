@@ -124,7 +124,6 @@
 // import floatingPostButton from '@/components/floatingPostButton.vue'
 import { gql } from '@apollo/client/core'
 import { useApolloClient } from '@vue/apollo-composable'
-import { useQuery } from '@vue/apollo-composable'
 import { format } from 'date-fns'
 import {
   IonAvatar,
@@ -151,7 +150,7 @@ import {
 } from '@ionic/vue'
 
 import { checkmarkCircle, alertCircleOutline } from 'ionicons/icons'
-import { computed } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useAuthStore } from '@/stores/userStore'
 import { isCurrentUserId, resolveJobImage } from '@/utils/jobHelpers'
 import { t } from '@/utils/i18n'
@@ -167,7 +166,6 @@ export interface Job {
   postType: string;
   origin: string;
   destination: string;
-  productImage?: string;
   price?: number;
   user?: {
     id: string;
@@ -187,7 +185,6 @@ export interface Job {
     };
   }>
 }
-
 
 export interface AllJobsQuery {
   availableJobs: Job[];
@@ -255,8 +252,6 @@ const JOB_QUERY = gql`
       postType
       origin
       destination
-      productImage
-      
     }
   }
 `;
@@ -271,7 +266,6 @@ const JOB_QUERY_AUTHENTICATED = gql`
       postType
       origin
       destination
-      productImage
       price
       user {
         id
@@ -419,17 +413,6 @@ const cancelApplication = async (job: Job) => {
 };
 
 
-const currentQuery = computed(() => {
-  return localStorage.getItem('authToken') 
-    ? JOB_QUERY_AUTHENTICATED 
-    : JOB_QUERY;
-});
-
-const hardRefreshData = async () => {
-  await refetch();
-};
-
-
 const doRefresh = async (event: RefresherCustomEvent) => {
   console.log('Refreshing data...');
 
@@ -451,11 +434,41 @@ const doRefresh = async (event: RefresherCustomEvent) => {
   }
 };
 
-const { result, loading, error, refetch } = useQuery<AllJobsQuery>(currentQuery, null, {
+const result = ref<AllJobsQuery | undefined>();
+const loading = ref(true);
+const error = ref<Error | null>(null);
+
+const selectedQuery = localStorage.getItem('authToken')
+  ? JOB_QUERY_AUTHENTICATED
+  : JOB_QUERY;
+
+const jobsObservable = client.watchQuery<AllJobsQuery>({
+  query: selectedQuery,
   fetchPolicy: 'cache-first',
   pollInterval: 180000,
+  notifyOnNetworkStatusChange: true,
 });
-console.log('Query Data:', result);
+
+const jobsSubscription = jobsObservable.subscribe({
+  next(payload) {
+    result.value = payload.data;
+    loading.value = payload.loading;
+    error.value = null;
+  },
+  error(queryError) {
+    error.value = queryError instanceof Error ? queryError : new Error(String(queryError));
+    loading.value = false;
+  },
+});
+
+onBeforeUnmount(() => {
+  jobsSubscription.unsubscribe();
+  jobsObservable.stopPolling();
+});
+
+const hardRefreshData = async () => {
+  await jobsObservable.refetch();
+};
 
 
 

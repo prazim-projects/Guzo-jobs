@@ -26,12 +26,32 @@
 
           <ion-item>
             <ion-label position="floating">Password</ion-label>
-            <ion-input v-model="user.password" type="password" required></ion-input>
+            <ion-input v-model="user.password" :type="showPassword ? 'text' : 'password'" required></ion-input>
+            <ion-button
+              slot="end"
+              fill="clear"
+              size="small"
+              type="button"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              @click="showPassword = !showPassword"
+            >
+              <ion-icon :icon="showPassword ? eyeOffOutline : eyeOutline"></ion-icon>
+            </ion-button>
           </ion-item>
 
           <ion-item>
             <ion-label position="floating">Confirm Password</ion-label>
-            <ion-input v-model="user.confirmPassword" type="password" required></ion-input>
+            <ion-input v-model="user.confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" required></ion-input>
+            <ion-button
+              slot="end"
+              fill="clear"
+              size="small"
+              type="button"
+              :aria-label="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
+              @click="showConfirmPassword = !showConfirmPassword"
+            >
+              <ion-icon :icon="showConfirmPassword ? eyeOffOutline : eyeOutline"></ion-icon>
+            </ion-button>
           </ion-item>
 
           <ion-button expand="block" @click="handleSignup" class="ion-margin-top">Sign Up</ion-button>
@@ -65,7 +85,9 @@ import {
   IonLabel,
   IonInput,
   IonButton,
+  IonIcon,
 } from '@ionic/vue';
+import { eyeOffOutline, eyeOutline } from 'ionicons/icons';
 
 const router = useRouter();
 const userStore = useAuthStore();
@@ -85,6 +107,9 @@ const user = ref({
   password: '',
   confirmPassword: '',
 });
+
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 
 const handleSignup = async () => {
   try {
