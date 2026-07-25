@@ -1,5 +1,4 @@
 export interface JobImageSource {
-  productImage?: string | null;
   postType?: string;
   origin?: string;
   destination?: string;
@@ -12,5 +11,5 @@ export const isCurrentUserId = (candidateId?: string | number | null, currentUse
 };
 
 export const resolveJobImage = (job: JobImageSource) => {
-  return job.productImage || FALLBACK_JOB_IMAGE;
+  return FALLBACK_JOB_IMAGE;
 };
