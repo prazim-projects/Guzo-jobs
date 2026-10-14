@@ -43,10 +43,12 @@ guzo-jobs-back/api/migrations
 \guzo-jobs-back/.env
 android/.idea/*
 android/.gradle/*
-android/app/*
+android/**/build/*
+android/local.properties
 \src\vite-env.d.ts
 .env
 src/assets/images/profilePics/*
 src/mutations.gql
 .env.example
 guzo-jobs-back/guzo_jobs_backend/settings_prod.py
+.test-deps/
