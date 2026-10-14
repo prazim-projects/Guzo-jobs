@@ -1,5 +1,7 @@
 import graphql_jwt
 import graphene
+from .account import validate_strong_password, RequestPasswordReset, ResetPassword, DeleteAccount
+from graphql import GraphQLError
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -61,11 +63,20 @@ class RegisterUser(graphene.Mutation):
         username = graphene.String(required=True)
         password = graphene.String(required=True)
         phone_number = graphene.String(required=True)
+        confirm_password = graphene.String(required=True)
+        email = graphene.String(required=False)
 
     @classmethod
-    def mutate(cls, root, info, username, password, phone_number):
+    def mutate(cls, root, info, username, password, phone_number, confirm_password, email=''):
         User = get_user_model()
-        user = User(username=username, phone_number=phone_number)
+        if password != confirm_password:
+            raise GraphQLError('password_mismatch')
+        if not username.strip() or not phone_number.strip():
+            raise GraphQLError('required_fields')
+        if User.objects.filter(username=username.strip()).exists() or User.objects.filter(phone_number=phone_number.strip()).exists():
+            raise GraphQLError('account_exists')
+        user = User(username=username.strip(), phone_number=phone_number.strip(), email=email.strip())
+        validate_strong_password(password, user)
         user.set_password(password)
         user.save()
         token = get_token(user)
@@ -551,6 +562,9 @@ class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
         return cls(user=info.context.user)
 
 class Mutation(graphene.ObjectType):
+    request_password_reset = RequestPasswordReset.Field()
+    reset_password = ResetPassword.Field()
+    delete_account = DeleteAccount.Field()
     token_auth = ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()

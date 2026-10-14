@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import environ
 import os
+from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,8 +28,12 @@ DEBUG=env('DEBUG')
 
 ALLOWED_HOSTS = []
 
+def _env_list(name, default=''):
+    return [item.strip() for item in env(name, default=default).split(',') if item.strip()]
+
 
 # Application definition
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -37,25 +42,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'graphene_django',
     'api',
-    'corsheaders',
     'graphql_jwt',
     "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
 
 ]
 
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "authorization",
-    "content-type",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-]
-
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -86,18 +83,38 @@ AUTHENTICATION_BACKENDS = [
 AUTH_USER_MODEL = 'api.UserProfile'
 
 # Telebirr configuration (read once from environment)
-TELEBIRR_APP_ID = env('TELEBIRR_APP_ID', default='')
-TELEBIRR_APP_KEY = env('TELEBIRR_APP_KEY', default='')
-TELEBIRR_MERCHANT_ID = env('TELEBIRR_MERCHANT_ID', default='')
-TELEBIRR_NOTIFY_URL = env('TELEBIRR_NOTIFY_URL', default='')
-TELEBIRR_RECEIVER_NAME = env('TELEBIRR_RECEIVER_NAME', default='')
-TELEBIRR_RECEIVER_PHONE = env('TELEBIRR_RECEIVER_PHONE', default='')
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
+TELEBIRR_APP_ID = env('TELEBIRR_APP_ID')
+TELEBIRR_APP_KEY = env('TELEBIRR_APP_KEY')
+TELEBIRR_MERCHANT_ID = env('TELEBIRR_MERCHANT_ID')
+TELEBIRR_NOTIFY_URL = env('TELEBIRR_NOTIFY_URL')
+TELEBIRR_RECEIVER_NAME = env('TELEBIRR_RECEIVER_NAME')
+TELEBIRR_RECEIVER_PHONE = env('TELEBIRR_RECEIVER_PHONE')
+
 CORS_ALLOW_CREDENTIALS = True
-CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
-CSRF_COOKIE_HTTPONLY = env.bool('CSRF_COOKIE_HTTPONLY')
-CSRF_COOKIE_SECURE=False
-CSRF_COOKIE_SAMESITE=None
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'authorization',
+    'content-type',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+_cors_origins = _env_list('CORS_ALLOWED_ORIGINS', default='')
+CORS_ALLOWED_ORIGINS = _cors_origins
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^http://localhost(:\d+)?$',
+    r'^http://127\.0\.0\.1(:\d+)?$',
+    r'^http://10\.0\.2\.2(:\d+)?$',
+    r'^http://192\.168\.\d+\.\d+(:\d+)?$',
+    r'^capacitor://localhost$',
+    r'^ionic://localhost$',
+]
+
+CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS', default='')
+CSRF_COOKIE_HTTPONLY = env.bool('CSRF_COOKIE_HTTPONLY', default=False)
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = None
 
 
 ROOT_URLCONF = 'guzo_jobs_backend.urls'
@@ -167,3 +184,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+PASSWORD_RESET_URL = env('PASSWORD_RESET_URL', default='http://localhost:5173/#/reset-password')
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', default='localhost')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@guzojobs.com')
