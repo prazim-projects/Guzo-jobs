@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { am, en } from './messages'
 
 export type AppLanguage = 'en' | 'am'
 
@@ -35,6 +36,13 @@ export const toggleLanguage = () => {
   setLanguage(currentLanguage.value === 'en' ? 'am' : 'en')
 }
 
-export const t = (key: TranslationKey): string => {
-  return dictionary[currentLanguage.value][key] || dictionary.en[key]
+export const t = (key: string): string => {
+  return (dictionary[currentLanguage.value] as Record<string, string>)[key]
+    || (currentLanguage.value === 'am' ? am[key] : en[key]) || en[key] || key
+}
+
+export function authError(error: unknown, fallback = 'request_failed'): string {
+  const message = error instanceof Error ? error.message : '';
+  const known = ['password_mismatch', 'weak_password', 'required_fields', 'invalid_credentials', 'account_exists', 'invalid_reset', 'active_contracts'];
+  return known.find(key => message.includes(key)) || fallback;
 }

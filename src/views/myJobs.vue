@@ -2,7 +2,7 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
-        <ion-title>My Jobs</ion-title>
+        <ion-title>{{ t("My Jobs") }}</ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content>
@@ -11,21 +11,21 @@
       </ion-refresher>
       <ion-segment :value="selectedSegment" @ionChange="segmentChanged($event)">
         <ion-segment-button value="posted">
-          <ion-label>Posted</ion-label>
+          <ion-label>{{ t("Posted") }}</ion-label>
         </ion-segment-button>
         <ion-segment-button value="accepted">
-          <ion-label>Accepted</ion-label>
+          <ion-label>{{ t("Accepted") }}</ion-label>
         </ion-segment-button>
         <ion-segment-button value="completed">
-          <ion-label>Completed</ion-label>
+          <ion-label>{{ t("Completed") }}</ion-label>
         </ion-segment-button>
         <ion-segment-button value="pending">
-          <ion-label>Pending</ion-label>
+          <ion-label>{{ t("Pending") }}</ion-label>
         </ion-segment-button>
       </ion-segment>
 
       <div v-if="selectedSegment === 'posted'">
-        <div v-if="!loading && !error && postedJobs.length">
+        <div v-if="!activeLoading && !activeError && postedJobs.length">
           <ion-card v-for="job in postedJobs" :key="job.id">
             <ion-card-header>
               <ion-card-title>{{ job.title }}</ion-card-title>
@@ -41,16 +41,16 @@
                 </div>
               </div>
               <ion-button expand="block" color="danger" fill="outline" @click="deleteJob(job.id)">
-                Delete Post
+                {{ t("Delete Post") }}
               </ion-button>
             </ion-card-content>
           </ion-card>
         </div>
-        <ion-text v-else-if="!loading">No posted jobs yet.</ion-text>
+        <ion-text v-else-if="!activeLoading">No posted jobs yet.</ion-text>
       </div>
 
       <div v-if="selectedSegment === 'accepted'">
-        <div v-if="!loading && !error && acceptedJobs.length">
+        <div v-if="!activeLoading && !activeError && acceptedJobs.length">
           <ion-card v-for="job in acceptedJobs" :key="job.id">
             <ion-card-header>
               <ion-card-title>{{ job.title }}</ion-card-title>
@@ -68,10 +68,10 @@
                   <p v-if="!hasPaidEscrow(getUserAcceptedContract(job))"><strong>Status:</strong> Waiting for poster escrow deposit via Telebirr</p>
                   <p v-else><strong>Status:</strong> Escrow funded, job in progress</p>
                   <ion-button v-if="hasPaidEscrow(getUserAcceptedContract(job))" expand="block" color="success" @click="completeJob(getUserAcceptedContract(job)?.id!)">
-                    Mark as Completed
+                    {{ t("Mark as Completed") }}
                   </ion-button>
                   <ion-button expand="block" color="warning" fill="outline" @click="openComplaint(getUserAcceptedContract(job)?.id!)">
-                    Raise Complaint
+                    {{ t("Raise Complaint") }}
                   </ion-button>
                 </div>
                 <div v-else-if="getUserAcceptedContract(job)?.status === 'COMPLETED_BY_ACCEPTOR'">
@@ -81,7 +81,7 @@
                 <div v-else-if="getUserAcceptedContract(job)?.status === 'COMPLETED_BY_POSTER'">
                   <p><strong>Status:</strong> {{ job.user?.username }} marked as completed - please confirm</p>
                   <ion-button expand="block" color="success" @click="completeJob(getUserAcceptedContract(job)?.id!)">
-                    Confirm Completion
+                    {{ t("Confirm Completion") }}
                   </ion-button>
                 </div>
               </div>
@@ -100,10 +100,10 @@
                     <p>3. Paste the link below and tap verify.</p>
                     <div class="guide-actions">
                       <ion-button size="small" fill="outline" @click="copyReceiverPhone">
-                        Copy Phone
+                        {{ t("Copy Phone") }}
                       </ion-button>
                       <ion-button size="small" fill="outline" :href="TELEBIRR_RECEIPT_PREFIX" target="_blank" rel="noopener noreferrer">
-                        Open Receipt Portal
+                        {{ t("Open Receipt Portal") }}
                       </ion-button>
                     </div>
                   </div>
@@ -120,19 +120,19 @@
                     color="secondary"
                     @click="fundEscrow(getUserAcceptedContract(job)?.id!)"
                   >
-                    Verify Telebirr Receipt and Fund Escrow
+                    {{ t("Verify Telebirr Receipt and Fund Escrow") }}
                   </ion-button>
                   <ion-button v-if="hasPaidEscrow(getUserAcceptedContract(job))" expand="block" color="success" @click="completeJob(getUserAcceptedContract(job)?.id!)">
-                    Mark as Completed
+                    {{ t("Mark as Completed") }}
                   </ion-button>
                   <ion-button expand="block" color="warning" fill="outline" @click="openComplaint(getUserAcceptedContract(job)?.id!)">
-                    Raise Complaint
+                    {{ t("Raise Complaint") }}
                   </ion-button>
                 </div>
                 <div v-else-if="getUserAcceptedContract(job)?.status === 'COMPLETED_BY_ACCEPTOR'">
                   <p><strong>Status:</strong> {{ getUserAcceptedContract(job)?.acceptor?.username }} marked as completed</p>
                   <ion-button expand="block" color="success" @click="completeJob(getUserAcceptedContract(job)?.id!)">
-                    Confirm Completion
+                    {{ t("Confirm Completion") }}
                   </ion-button>
                 </div>
                 <div v-else-if="getUserAcceptedContract(job)?.status === 'COMPLETED_BY_POSTER'">
@@ -143,11 +143,11 @@
             </ion-card-content>
           </ion-card>
         </div>
-        <ion-text v-else-if="!loading">No accepted jobs yet.</ion-text>
+        <ion-text v-else-if="!activeLoading">No accepted jobs yet.</ion-text>
       </div>
 
       <div v-if="selectedSegment === 'completed'">
-        <div v-if="!loading && !error && completedJobs.length">
+        <div v-if="!activeLoading && !activeError && completedJobs.length">
           <ion-card v-for="job in completedJobs" :key="job.id">
             <ion-card-header>
               <ion-card-title>{{ job.title }}</ion-card-title>
@@ -171,11 +171,11 @@
             </ion-card-content>
           </ion-card>
         </div>
-        <ion-text v-else-if="!loading">No completed jobs yet.</ion-text>
+        <ion-text v-else-if="!activeLoading">No completed jobs yet.</ion-text>
       </div>
 
       <div v-if="selectedSegment === 'pending'">
-        <div v-if="!loading && !error && pendingJobs.length">
+        <div v-if="!activeLoading && !activeError && pendingJobs.length">
           <ion-card v-for="job in pendingJobs" :key="job.id">
             <ion-card-header>
               <ion-card-title>{{ job.title }}</ion-card-title>
@@ -191,7 +191,7 @@
               <!-- For acceptors: show their pending application -->
               <div v-if="getUserPendingContract(job)">
                 <p><strong>Status:</strong> Waiting for confirmation from {{ job.user?.username }}</p>
-                <ion-button fill="outline" color="medium" @click="rejectJob(getUserPendingContract(job)?.id!)">Cancel Application</ion-button>
+                <ion-button fill="outline" color="medium" @click="rejectJob(getUserPendingContract(job)?.id!)">{{ t("Cancel Application") }}</ion-button>
               </div>
               
               <!-- For posters: show all pending applications -->
@@ -201,27 +201,26 @@
                   <p><strong>Applicant:</strong> {{ contract.acceptor?.username }}</p>
                   <div class="acceptance-pulse" aria-hidden="true"></div>
                   <div class="pending-actions">
-                    <ion-button size="small" color="success" @click="confirmJob(contract.id)">Accept</ion-button>
-                    <ion-button size="small" color="danger" @click="rejectJob(contract.id)">Reject</ion-button>
+                    <ion-button size="small" color="success" @click="confirmJob(contract.id)">{{ t("Accept") }}</ion-button>
+                    <ion-button size="small" color="danger" @click="rejectJob(contract.id)">{{ t("Reject") }}</ion-button>
                   </div>
                 </div>
               </div>
             </ion-card-content>
           </ion-card>
         </div>
-        <ion-text v-else-if="!loading">No pending jobs.</ion-text>
+        <ion-text v-else-if="!activeLoading">No pending jobs.</ion-text>
       </div>
 
-      <ion-text v-if="loading" class="ion-padding ion-text-center">Loading...</ion-text>
-      <ion-text v-if="error" color="danger" class="ion-padding">Error: {{ error.message }}</ion-text>
+      <ion-text v-if="activeLoading" class="ion-padding ion-text-center">Loading...</ion-text>
+      <ion-text v-if="activeError" color="danger" class="ion-padding">Error: {{ activeError.message }}</ion-text>
     </ion-content>
   </ion-page>
 </template>
 
 <script lang="ts" setup>
 import { gql } from '@apollo/client/core'
-import { useQuery } from '@vue/apollo-composable'
-import { computed, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/userStore'
 import { useApolloClient } from '@vue/apollo-composable'
 import { isCurrentUserId } from '@/utils/jobHelpers'
@@ -253,14 +252,20 @@ import {
 
 const authStore = useAuthStore()
 const { client } = useApolloClient()
-const selectedSegment = ref('posted')
+type JobsSegment = 'posted' | 'accepted' | 'completed' | 'pending'
+
+const selectedSegment = ref<JobsSegment>('posted')
 const receiptLinks = ref<Record<string, string>>({})
 const platformTelebirrPhone = import.meta.env.VITE_PLATFORM_TELEBIRR_PHONE || '+2519XXXXXXXX'
 const platformTelebirrReceiverName = import.meta.env.VITE_PLATFORM_TELEBIRR_RECEIVER_NAME || 'Bealprasim Demere Tefera'
 const TELEBIRR_RECEIPT_PREFIX = 'https://transactioninfo.ethiotelecom.et/receipt/'
+const SEGMENT_STALE_MS = 60_000
+const REFRESH_DEDUPE_MS = 10_000
 
 const segmentChanged = (event: any) => {
-  selectedSegment.value = event.detail.value
+  const nextSegment = event.detail.value as JobsSegment
+  selectedSegment.value = nextSegment
+  void fetchSegment(nextSegment)
 }
 
 interface Job {
@@ -296,38 +301,101 @@ interface AllJobsQuery {
   myJobs: Job[];
 }
 
-const JOB_QUERY_AUTHENTICATED = gql`
-  query JOB_QUERY_AUTHENTICATED {
-    myJobs {
+interface SegmentJobsQuery {
+  jobs: Job[];
+}
+
+interface SegmentState {
+  jobs: Job[];
+  loading: boolean;
+  error: Error | null;
+  lastFetched: number;
+}
+
+const JOB_FIELDS = gql`
+  fragment MyJobsFields on JobPostingType {
+    id
+    title
+    description
+    origin
+    destination
+    price
+    postType
+    user {
       id
-      title
-      description
-      origin
-      destination
-      price
-      postType
-      user {
-        id
-        username
-      }
-      contracts {
+      username
+    }
+    contracts {
+      id
+      status
+      preferredPaymentMethod
+      escrowPayments {
         id
         status
-        preferredPaymentMethod
-        escrowPayments {
-          id
-          status
-          paymentMethod
-          amount
-        }
-        acceptor {
-          id
-          username
-        }
+        paymentMethod
+        amount
+      }
+      acceptor {
+        id
+        username
       }
     }
   }
 `;
+
+const JOB_QUERY_AUTHENTICATED = gql`
+  ${JOB_FIELDS}
+  query JOB_QUERY_AUTHENTICATED {
+    myJobs {
+      ...MyJobsFields
+    }
+  }
+`;
+
+const SEGMENT_QUERIES = {
+  posted: gql`
+    ${JOB_FIELDS}
+    query PostedJobsQuery {
+      jobs: myJobs {
+        ...MyJobsFields
+      }
+    }
+  `,
+  accepted: gql`
+    ${JOB_FIELDS}
+    query AcceptedJobsQuery {
+      jobs: myJobs {
+        ...MyJobsFields
+      }
+    }
+  `,
+  completed: gql`
+    ${JOB_FIELDS}
+    query CompletedJobsQuery {
+      jobs: myJobs {
+        ...MyJobsFields
+      }
+    }
+  `,
+  pending: gql`
+    ${JOB_FIELDS}
+    query PendingJobsQuery {
+      jobs: myJobs {
+        ...MyJobsFields
+      }
+    }
+  `,
+} satisfies Record<JobsSegment, ReturnType<typeof gql>>;
+
+const segmentState = reactive<Record<JobsSegment, SegmentState>>({
+  posted: { jobs: [], loading: false, error: null, lastFetched: 0 },
+  accepted: { jobs: [], loading: false, error: null, lastFetched: 0 },
+  completed: { jobs: [], loading: false, error: null, lastFetched: 0 },
+  pending: { jobs: [], loading: false, error: null, lastFetched: 0 },
+});
+const inFlightRequests = new Map<JobsSegment, Promise<void>>();
+let allSegmentsRequest: Promise<void> | null = null;
+let allSegmentsLastFetched = 0;
 
 const COMPLETE_JOB_MUTATION = gql`
   mutation confirmJobCompleted($contractId: ID!) {
@@ -387,18 +455,87 @@ const CREATE_COMPLAINT_MUTATION = gql`
   }
 `;
 
-const { result, loading, error, refetch } = useQuery<AllJobsQuery>(JOB_QUERY_AUTHENTICATED, null, {
-  fetchPolicy: 'cache-first',
-  pollInterval: 180000,
-});
+const getSegmentJobs = (segment: JobsSegment) => segmentState[segment].jobs;
 
-const hardRefreshData = async () => {
-  await refetch();
+const shouldFetchSegment = (segment: JobsSegment, preferNetwork = false) => {
+  const state = segmentState[segment];
+  if (state.loading || inFlightRequests.has(segment)) return false;
+  if (!state.lastFetched) return true;
+
+  const age = Date.now() - state.lastFetched;
+  return preferNetwork ? age > REFRESH_DEDUPE_MS : age > SEGMENT_STALE_MS;
+};
+
+const fetchSegment = (segment: JobsSegment, options: { preferNetwork?: boolean } = {}) => {
+  if (!shouldFetchSegment(segment, options.preferNetwork)) {
+    return inFlightRequests.get(segment) ?? Promise.resolve();
+  }
+
+  const state = segmentState[segment];
+  state.loading = true;
+  state.error = null;
+
+  const request = client.query<SegmentJobsQuery>({
+    query: SEGMENT_QUERIES[segment],
+    fetchPolicy: options.preferNetwork ? 'network-only' : 'cache-first',
+  }).then(({ data }) => {
+    state.jobs = data.jobs || [];
+    state.lastFetched = Date.now();
+  }).catch((error: Error) => {
+    state.error = error;
+    throw error;
+  }).finally(() => {
+    state.loading = false;
+    inFlightRequests.delete(segment);
+  });
+
+  inFlightRequests.set(segment, request);
+  return request;
+};
+
+const setAllSegmentJobs = (jobs: Job[]) => {
+  (Object.keys(segmentState) as JobsSegment[]).forEach(segment => {
+    segmentState[segment].jobs = jobs;
+    segmentState[segment].lastFetched = Date.now();
+    segmentState[segment].error = null;
+  });
+};
+
+const hardRefreshData = async (options: { force?: boolean } = {}) => {
+  const age = Date.now() - allSegmentsLastFetched;
+  if (!options.force && allSegmentsLastFetched && age <= REFRESH_DEDUPE_MS) {
+    return allSegmentsRequest ?? Promise.resolve();
+  }
+  if (allSegmentsRequest) return allSegmentsRequest;
+
+  (Object.keys(segmentState) as JobsSegment[]).forEach(segment => {
+    segmentState[segment].loading = true;
+  });
+
+  allSegmentsRequest = client.query<AllJobsQuery>({
+    query: JOB_QUERY_AUTHENTICATED,
+    fetchPolicy: 'network-only',
+  }).then(({ data }) => {
+    setAllSegmentJobs(data.myJobs || []);
+    allSegmentsLastFetched = Date.now();
+  }).catch((error: Error) => {
+    (Object.keys(segmentState) as JobsSegment[]).forEach(segment => {
+      segmentState[segment].error = error;
+    });
+    throw error;
+  }).finally(() => {
+    (Object.keys(segmentState) as JobsSegment[]).forEach(segment => {
+      segmentState[segment].loading = false;
+    });
+    allSegmentsRequest = null;
+  });
+
+  return allSegmentsRequest;
 };
 
 const doRefresh = async (event: RefresherCustomEvent) => {
   try {
-    await hardRefreshData();
+    await hardRefreshData({ force: true });
     const toast = await toastController.create({
       message: `${t('refresh_done')} ${t('refresh_notice')}`,
       duration: 2200,
@@ -413,13 +550,11 @@ const doRefresh = async (event: RefresherCustomEvent) => {
 };
 
 const postedJobs = computed(() => {
-  if (!result.value?.myJobs) return [];
-  return result.value.myJobs.filter(job => isCurrentUserId(job.user?.id, authStore.user?.id));
+  return getSegmentJobs('posted').filter(job => isCurrentUserId(job.user?.id, authStore.user?.id));
 });
 
 const acceptedJobs = computed(() => {
-  if (!result.value?.myJobs) return [];
-  return result.value.myJobs.filter(job => 
+  return getSegmentJobs('accepted').filter(job => 
     job.contracts?.some(contract => 
       (isCurrentUserId(contract.acceptor?.id, authStore.user?.id) && (contract.status === 'ACCEPTED' || contract.status === 'COMPLETED_BY_ACCEPTOR')) ||
       (isCurrentUserId(job.user?.id, authStore.user?.id) && (contract.status === 'ACCEPTED' || contract.status === 'COMPLETED_BY_ACCEPTOR'))
@@ -428,8 +563,7 @@ const acceptedJobs = computed(() => {
 });
 
 const pendingJobs = computed(() => {
-  if (!result.value?.myJobs) return [];
-  return result.value.myJobs.filter(job => 
+  return getSegmentJobs('pending').filter(job => 
     job.contracts?.some(contract => 
       (isCurrentUserId(contract.acceptor?.id, authStore.user?.id) && contract.status === 'PENDING') ||
       (isCurrentUserId(job.user?.id, authStore.user?.id) && contract.status === 'PENDING')
@@ -438,13 +572,19 @@ const pendingJobs = computed(() => {
 });
 
 const completedJobs = computed(() => {
-  if (!result.value?.myJobs) return [];
-  return result.value.myJobs.filter(job => 
+  return getSegmentJobs('completed').filter(job => 
     job.contracts?.some(contract => 
       (isCurrentUserId(contract.acceptor?.id, authStore.user?.id) && contract.status === 'COMPLETED') ||
       (isCurrentUserId(job.user?.id, authStore.user?.id) && contract.status === 'COMPLETED')
     )
   );
+});
+
+const activeLoading = computed(() => segmentState[selectedSegment.value].loading);
+const activeError = computed(() => segmentState[selectedSegment.value].error);
+
+onMounted(() => {
+  void fetchSegment(selectedSegment.value);
 });
 
 const completeJob = async (contractId: string) => {
@@ -456,14 +596,15 @@ const completeJob = async (contractId: string) => {
       }
     });
     console.log('Job completed:', result);
-    await hardRefreshData();
+    await hardRefreshData({ force: true });
   } catch (error) {
     console.error('Error completing job:', error);
   }
 };
 
 const confirmJob = async (contractId: string) => {
-  const jobForContract = result.value?.myJobs.find(job => job.contracts?.some(contract => contract.id === contractId));
+  const allLoadedJobs = Object.values(segmentState).flatMap(state => state.jobs);
+  const jobForContract = allLoadedJobs.find(job => job.contracts?.some(contract => contract.id === contractId));
   if (!isCurrentUserId(jobForContract?.user?.id, authStore.user?.id)) {
     console.warn('Blocked confirmation attempt by non-owner user.');
     return;
@@ -477,7 +618,7 @@ const confirmJob = async (contractId: string) => {
       }
     });
     console.log('Job confirmed:', result);
-    await hardRefreshData();
+    await hardRefreshData({ force: true });
     selectedSegment.value = 'accepted';
   } catch (error) {
     console.error('Error confirming job:', error);
@@ -493,7 +634,7 @@ const rejectJob = async (contractId: string) => {
       }
     });
     console.log('Job rejected:', result);
-    await hardRefreshData();
+    await hardRefreshData({ force: true });
   } catch (error) {
     console.error('Error rejecting job:', error);
   }
@@ -507,7 +648,7 @@ const deleteJob = async (jobId: string) => {
         jobPostId: jobId,
       },
     });
-    await hardRefreshData();
+    await hardRefreshData({ force: true });
   } catch (error) {
     console.error('Error deleting job:', error);
   }
@@ -551,7 +692,7 @@ const fundEscrow = async (contractId: string) => {
       positionAnchor: 'main-tab-bar',
     });
     await toast.present();
-    await hardRefreshData();
+    await hardRefreshData({ force: true });
   } catch (error) {
     console.error('Error funding escrow:', error);
     const message = error instanceof Error ? error.message : String(error);

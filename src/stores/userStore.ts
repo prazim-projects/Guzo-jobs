@@ -37,6 +37,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         const jwtToken = data.tokenAuth.token
         const userData = data.tokenAuth.user
+        if (!jwtToken || !userData) throw new Error('invalid_credentials')
         if (jwtToken) {
             token.value = jwtToken
             user.value = userData
@@ -51,10 +52,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Register Mutation
-  async function register(username: string, phoneNumber: string, password: string) {
+  async function register(username: string, phoneNumber: string, password: string, confirmPassword: string, email = '') {
     const REGISTER_MUTATION = gql`
-      mutation RegisterUser($username: String!, $phoneNumber: String!, $password: String!) {
-        RegisterUser(username: $username, phoneNumber: $phoneNumber, password: $password) {
+      mutation RegisterUser($username: String!, $phoneNumber: String!, $password: String!, $confirmPassword: String!, $email: String) {
+        RegisterUser(username: $username, phoneNumber: $phoneNumber, password: $password, confirmPassword: $confirmPassword, email: $email) {
           token
           user {
             id
@@ -67,18 +68,18 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data } = await client.mutate({
         mutation: REGISTER_MUTATION,
-        variables: { username, phoneNumber, password }
+        variables: { username, phoneNumber, password, confirmPassword, email }
       })
 
       const jwtToken = data.RegisterUser.token 
       const userData = data.RegisterUser.user
+      if (!jwtToken || !userData) throw new Error('request_failed')
       if(jwtToken){
         token.value = jwtToken
         user.value = userData
         localStorage.setItem('authToken', jwtToken)
         localStorage.setItem('user',  JSON.stringify(toRaw(user.value)));
         isAuthenticated.value = true
-        router.push('/home')
 
       }
     } catch (error) {
@@ -95,6 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
     isAuthenticated.value = false
+    void client.clearStore()
     router.push('/home')
   }
 

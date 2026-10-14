@@ -2,12 +2,12 @@
   <ion-page>
     <ion-header>
       <ion-toolbar color="primary">
-        <ion-title>My Profile</ion-title>
+        <ion-title>{{ t("My Profile") }}</ion-title>
         <ion-buttons slot="end">
-          <ion-button v-if="!isEditing" @click="startEditing">
+          <ion-button v-if="!isEditing" :aria-label="t('Edit profile')" @click="startEditing">
             <ion-icon slot="icon-only" :icon="pencil"></ion-icon>
           </ion-button>
-          <ion-button v-if="isEditing" @click="cancelEdit">
+          <ion-button v-if="isEditing" :aria-label="t('Cancel')" @click="cancelEdit">
             <ion-icon slot="icon-only" :icon="close"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -28,7 +28,7 @@
       <ion-card v-else-if="error || updateError" color="danger">
         <ion-card-content class="ion-text-center">
           <p>{{ error?.message || updateErrorMessage || 'Failed to load/save profile' }}</p>
-          <ion-button color="light" @click="refetch">Retry</ion-button>
+          <ion-button color="light" @click="refetch">{{ t("Retry") }}</ion-button>
         </ion-card-content>
       </ion-card>
 
@@ -47,7 +47,7 @@
             <ion-list lines="inset">
               <!-- Email -->
               <ion-item>
-                <ion-label position="stacked">Email</ion-label>
+                <ion-label position="stacked">{{ t("Email") }}</ion-label>
                 <ion-input
                   v-if="isEditing"
                   v-model="form.email"
@@ -60,7 +60,7 @@
 
               <!-- Phone Number -->
               <ion-item>
-                <ion-label position="stacked">Phone Number</ion-label>
+                <ion-label position="stacked">{{ t("Phone Number") }}</ion-label>
                 <ion-input
                   v-if="isEditing"
                   v-model="form.phoneNumber"
@@ -108,10 +108,10 @@
             <!-- Action Buttons (edit mode only) -->
             <div v-if="isEditing" class="ion-margin-top ion-text-center">
               <ion-button expand="block" color="success" @click="saveProfile" :disabled="updating || !isFormValid">
-                Save Changes
+                {{ t("Save Changes") }}
               </ion-button>
               <ion-button expand="block" fill="clear" @click="cancelEdit" :disabled="updating">
-                Cancel
+                {{ t("Cancel") }}
               </ion-button>
             </div>
           </ion-card-content>
@@ -119,19 +119,20 @@
 
         <ion-card>
           <ion-card-header>
-            <ion-card-title>Quick Actions</ion-card-title>
+            <ion-card-title>{{ t("Quick Actions") }}</ion-card-title>
           </ion-card-header>
           <ion-card-content>
             <ion-button expand="block" fill="outline" @click="switchLanguage">{{ languageButtonLabel }}</ion-button>
             <ion-button expand="block" fill="outline" router-link="/notifications" class="notification-quick-action">
-              Notifications
+              {{ t("Notifications") }}
               <ion-badge v-if="unreadNotificationsCount > 0" color="danger" class="quick-action-badge">
                 {{ unreadNotificationsCount }}
               </ion-badge>
             </ion-button>
-            <ion-button expand="block" fill="outline" router-link="/support">Support</ion-button>
-            <ion-button expand="block" fill="outline" router-link="/mapET">Map</ion-button>
-            <ion-button expand="block" color="medium" router-link="/logout">Logout</ion-button>
+            <ion-button expand="block" fill="outline" router-link="/support">{{ t("Support") }}</ion-button>
+            <ion-button expand="block" fill="outline" router-link="/mapET">{{ t("Map") }}</ion-button>
+            <ion-button expand="block" color="medium" router-link="/logout">{{ t("Logout") }}</ion-button>
+            <AccountActions />
           </ion-card-content>
         </ion-card>
 
@@ -151,7 +152,7 @@
       <div v-else class="ion-text-center ion-padding">
         <ion-icon :icon="alertCircleOutline" size="large" color="warning"></ion-icon>
         <p>Please log in to view and edit your profile.</p>
-        <ion-button expand="block" router-link="/login">Go to Login</ion-button>
+        <ion-button expand="block" router-link="/login">{{ t("Go to Login") }}</ion-button>
       </div>
     </ion-content>
   </ion-page>
@@ -159,6 +160,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import AccountActions from '@/components/AccountActions.vue'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { gql } from '@apollo/client/core'
 import { useAuthStore } from '@/stores/userStore'

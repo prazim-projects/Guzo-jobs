@@ -16,6 +16,7 @@ const routes: Array<RouteRecordRaw> = [
       { path: 'add', component: () => import('@/views/NotePage.vue'), meta: { requiresAuth: true } },
       { path: 'login', component: () => import('@/views/login.vue') },
       { path: 'signup', component: () => import('@/views/register.vue') },
+      { path: 'reset-password', component: () => import('@/views/ResetPassword.vue') },
       { path: 'profile', component: () => import('@/views/ProfilePage.vue'), meta: { requiresAuth: true } },
       { path: 'mapET', component: () => import('@/views/MapPage.vue'), meta: { requiresAuth: true } },
       {path: 'logout', component: () => import('@/views/logout.vue'), meta: { requiresAuth: true } },
@@ -41,7 +42,7 @@ router.beforeEach((to, from, next) => {
   const onboardingCompleted = localStorage.getItem('onboardingCompleted') === 'true';
 
   // If user hasn't completed onboarding and isn't already on onboarding page
-  if (!onboardingCompleted && to.path !== '/onboarding') {
+  if (!onboardingCompleted && to.path !== '/onboarding' && to.path !== '/reset-password') {
     next({ path: '/onboarding' });
     return;
   }

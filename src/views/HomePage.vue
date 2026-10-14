@@ -69,7 +69,7 @@
               @click="handleAcceptJob(job.id)"
               v-if="job.user && !isCurrentUserId(job.user.id, authStore.user?.id) && !hasUserApplied(job)">
                 <ion-icon slot="start" :icon="checkmarkCircle"></ion-icon>
-                Accept Job
+                {{ t("Accept Job") }}
               </ion-button>
 
             <ion-button
@@ -79,7 +79,7 @@
               class="ion-no-margin"
               @click="cancelApplication(job)"
             >
-              Cancel Request
+              {{ t("Cancel Request") }}
             </ion-button>
     
             <ion-badge v-else-if="job.user" color="light" expand="block" mode="ios" class="full-width-badge">
@@ -98,10 +98,10 @@
               
               <div class="contract-actions">
                 <ion-button size="small" color="primary" @click="handleJobConfirmation(contract)">
-                  Confirm {{ contract.acceptor.username }}
+                  {{ t('Confirm') }} {{ contract.acceptor.username }}
                 </ion-button>
                 <ion-button size="small" color="danger" @click="handleJobRejection(contract.id)">
-                  Reject
+                  {{ t("Reject") }}
                 </ion-button>
               </div>
               <div class="acceptance-pulse" aria-hidden="true"></div>

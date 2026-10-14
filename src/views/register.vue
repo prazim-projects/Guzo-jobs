@@ -1,139 +1,61 @@
 <template>
   <ion-page>
-    <ion-header>
-      <ion-toolbar color="primary">
-        <ion-title>Sign Up</ion-title>
-      </ion-toolbar>
-    </ion-header>
-
+    <ion-header><ion-toolbar color="primary"><ion-title>{{ t('Sign Up') }}</ion-title></ion-toolbar></ion-header>
     <ion-content class="ion-padding">
-      <ion-card>
-        <ion-card-header>
-          <ion-card-title>Create an Account</ion-card-title>
-          <ion-card-subtitle>Join Guzo Jobs today!</ion-card-subtitle>
-        </ion-card-header>
-
-        <ion-card-content>
-          <ion-item>
-            <ion-label position="floating">Username</ion-label>
-            <ion-input v-model="user.username" type="text" required></ion-input>
-          </ion-item>
-
-          <ion-item>
-            <ion-label position="floating">Phone Number</ion-label>
-            <ion-input v-model="user.phone_number" type="tel" placeholder="+251"required></ion-input>
-          </ion-item>
-
-          <ion-item>
-            <ion-label position="floating">Password</ion-label>
-            <ion-input v-model="user.password" :type="showPassword ? 'text' : 'password'" required></ion-input>
-            <ion-button
-              slot="end"
-              fill="clear"
-              size="small"
-              type="button"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
-              @click="showPassword = !showPassword"
-            >
-              <ion-icon :icon="showPassword ? eyeOffOutline : eyeOutline"></ion-icon>
-            </ion-button>
-          </ion-item>
-
-          <ion-item>
-            <ion-label position="floating">Confirm Password</ion-label>
-            <ion-input v-model="user.confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" required></ion-input>
-            <ion-button
-              slot="end"
-              fill="clear"
-              size="small"
-              type="button"
-              :aria-label="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
-              @click="showConfirmPassword = !showConfirmPassword"
-            >
-              <ion-icon :icon="showConfirmPassword ? eyeOffOutline : eyeOutline"></ion-icon>
-            </ion-button>
-          </ion-item>
-
-          <ion-button expand="block" @click="handleSignup" class="ion-margin-top">Sign Up</ion-button>
-
-          <p class="ion-text-center ion-margin-top">
-            Already have an account? <router-link to="/login">Login</router-link>
-          </p>
-        </ion-card-content>
-      </ion-card>
+      <form class="auth-form" @submit.prevent="handleSignup">
+        <h1>{{ t('Create an Account') }}</h1>
+        <ion-input v-model="user.username" :label="t('Username')" label-placement="stacked" fill="outline" autocomplete="username" required />
+        <ion-input v-model="user.phone_number" :label="t('Phone Number')" label-placement="stacked" fill="outline" type="tel" autocomplete="tel" placeholder="+251" required />
+        <ion-input v-model="user.email" :label="t('Email (for password recovery)')" label-placement="stacked" fill="outline" type="email" autocomplete="email" />
+        <ion-input v-model="user.password" :label="t('Password')" label-placement="stacked" fill="outline" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required />
+        <p class="password-help">{{ t('password_rules') }}</p>
+        <div class="password-actions">
+          <ion-button fill="clear" type="button" :aria-label="t(showPassword ? 'Hide password' : 'Show password')" @click="showPassword = !showPassword"><ion-icon slot="icon-only" :icon="showPassword ? eyeOffOutline : eyeOutline" /></ion-button>
+          <ion-button fill="clear" type="button" @click="generate">{{ t('Suggest a strong password') }}</ion-button>
+        </div>
+        <ion-input v-model="user.confirmPassword" :label="t('Confirm Password')" label-placement="stacked" fill="outline" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required />
+        <p v-if="user.confirmPassword && user.password !== user.confirmPassword" class="form-error" role="alert">{{ t('password_mismatch') }}</p>
+        <p v-if="error" class="form-error" role="alert">{{ t(error) }}</p>
+        <ion-button expand="block" type="submit" :disabled="busy">{{ t(busy ? 'Working...' : 'Sign Up') }}</ion-button>
+        <p>{{ t('Already have an account?') }} <router-link to="/login">{{ t('Login') }}</router-link></p>
+        <ion-button fill="clear" @click="toggleLanguage">{{ t(currentLanguage === 'en' ? 'lang_switch_to_am' : 'lang_switch_to_en') }}</ion-button>
+      </form>
     </ion-content>
-
   </ion-page>
 </template>
-
-<script lang="ts" setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/userStore'; // Assuming this is your Pinia store
-import {
-  IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonCard,
-  IonCardHeader,
-  IonCardTitle,
-  IonCardSubtitle,
-  IonCardContent,
-  IonItem,
-  IonLabel,
-  IonInput,
-  IonButton,
-  IonIcon,
-} from '@ionic/vue';
-import { eyeOffOutline, eyeOutline } from 'ionicons/icons';
-
+import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonInput, IonButton, IonIcon } from '@ionic/vue';
+import { eyeOutline, eyeOffOutline } from 'ionicons/icons';
+import { useAuthStore } from '@/stores/userStore';
+import { t, authError, currentLanguage, toggleLanguage } from '@/utils/i18n';
+import { isStrongPassword, suggestPassword } from '@/utils/password';
+import '@/theme/auth.css';
 const router = useRouter();
-const userStore = useAuthStore();
-
-const navRoutes = [
-  { path: '/', label: 'Home', icon: 'home-outline' },
-  { path: '/add', label: 'Add Note', icon: 'add-circle-outline' },
-  { path: '/login', label: 'Login', icon: 'log-in-outline' },
-  { path: '/profile', label: 'Profile', icon: 'person-circle-outline' },
-  { path: '/mapET', label: 'Map ET', icon: 'map-outline' },
-  { path: '/signup', label: 'Signup', icon: 'person-add-outline' },
-];
-
-const user = ref({
-  username: '',
-  phone_number: '',
-  password: '',
-  confirmPassword: '',
-});
-
+const store = useAuthStore();
+const user = ref({ username: '', phone_number: '', email: '', password: '', confirmPassword: '' });
 const showPassword = ref(false);
-const showConfirmPassword = ref(false);
-
-const handleSignup = async () => {
+const busy = ref(false);
+const error = ref('');
+function generate() {
+  user.value.password = suggestPassword();
+  user.value.confirmPassword = user.value.password;
+  showPassword.value = true;
+  error.value = '';
+}
+async function handleSignup() {
+  if (busy.value) return;
+  error.value = '';
+  const value = user.value;
+  if (!value.username.trim() || !value.phone_number.trim()) { error.value = 'required_fields'; return; }
+  if (value.password !== value.confirmPassword) { error.value = 'password_mismatch'; return; }
+  if (!isStrongPassword(value.password)) { error.value = 'weak_password'; return; }
+  busy.value = true;
   try {
-    await userStore.register(
-      user.value.username,
-      user.value.phone_number,
-      user.value.password,
-    );
-    router.push('/profile')
-  } catch (err) {
-    console.error(err);
-  }
-};
+    await store.register(value.username.trim(), value.phone_number.trim(), value.password, value.confirmPassword, value.email.trim());
+    await router.replace('/profile');
+  } catch (err) { error.value = authError(err); }
+  finally { busy.value = false; }
+}
 </script>
-
-<style scoped>
-ion-card {
-  max-width: 400px;
-  margin: 0 auto;
-}
-ion-item {
-  height: fit-content;
-}
-ion-input {
-  margin-top: 15px;
-}
-</style>

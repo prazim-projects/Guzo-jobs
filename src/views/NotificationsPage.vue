@@ -3,9 +3,9 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/profile"></ion-back-button>
+          <ion-back-button :text="t('Back')" default-href="/profile"></ion-back-button>
         </ion-buttons>
-        <ion-title>Notifications</ion-title>
+        <ion-title>{{ t("Notifications") }}</ion-title>
       </ion-toolbar>
     </ion-header>
 
@@ -27,9 +27,9 @@
             size="small"
             @click="markAsRead(item.id)"
           >
-            Mark read
+            {{ t("Mark read") }}
           </ion-button>
-          <ion-badge v-else slot="end" color="success">Read</ion-badge>
+          <ion-badge v-else slot="end" color="success">{{ t("Read") }}</ion-badge>
         </ion-item>
       </ion-list>
 

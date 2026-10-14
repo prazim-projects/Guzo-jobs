@@ -9,7 +9,7 @@
           :href="route.path"
         >
         <ion-icon :name="route.icon"></ion-icon>
-        <ion-label>{{ route.label }}</ion-label>
+        <ion-label>{{ t(route.label) }}</ion-label>
       </ion-tab-button>
         
     </ion-tab-bar>
@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/utils/i18n';
 import { IonIcon, IonTabButton, IonTabs, IonTabBar, IonLabel, IonRouterOutlet } from '@ionic/vue';
 import { useAuthStore } from '../stores/userStore';
 import { computed } from 'vue';

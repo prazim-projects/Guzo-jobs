@@ -2,7 +2,7 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
-        <ion-title>New Job Post</ion-title>
+        <ion-title>{{ t("New Job Post") }}</ion-title>
       </ion-toolbar>
     </ion-header>
 
@@ -10,35 +10,35 @@
       <ion-list>
         <!-- Title Input -->
         <ion-item>
-          <ion-label position="stacked">የሥራ ርዕስ</ion-label>
+          <ion-label position="stacked">{{ t("Job Title") }}</ion-label>
           <ion-input v-model="form.title" placeholder="Enter title"></ion-input>
         </ion-item>
 
         <!-- Post Type Selection -->
         <ion-item>
-          <ion-label position="stacked">Post Type</ion-label>
-          <ion-select v-model="form.postType" interface="popover">
-            <ion-select-option value="Transport">Transport</ion-select-option>
-            <ion-select-option value="Delivery">Delivery</ion-select-option>
-            <ion-select-option value="Odd Job"> Odd Job</ion-select-option>
-            <ion-select-option value="Trade">Trade</ion-select-option>
+          <ion-label position="stacked">{{ t("Post Type") }}</ion-label>
+          <ion-select v-model="form.postType" interface="popover" :cancel-text="t('Cancel')" :ok-text="t('Confirm')">
+            <ion-select-option value="Transport">{{ t("Transport") }}</ion-select-option>
+            <ion-select-option value="Delivery">{{ t("Delivery") }}</ion-select-option>
+            <ion-select-option value="Odd Job"> {{ t("Odd Job") }}</ion-select-option>
+            <ion-select-option value="Trade">{{ t("Trade") }}</ion-select-option>
           </ion-select>
         </ion-item>
 
         <!-- Origin and Destination -->
         <ion-item>
-          <ion-label position="stacked">From (Origin)</ion-label>
+          <ion-label position="stacked">{{ t("From (Origin)") }}</ion-label>
           <ion-input v-model="form.origin" placeholder="e.g. Addis Ababa"></ion-input>
         </ion-item>
 
         <ion-item v-if="form.postType !== 'Odd Job' && form.postType !== 'Trade'">
-          <ion-label position="stacked">To (Destination)</ion-label>
+          <ion-label position="stacked">{{ t("To (Destination)") }}</ion-label>
           <ion-input v-model="form.destination" placeholder="e.g. Hawassa"></ion-input>
         </ion-item>
        
         <!-- Description -->
         <ion-item>
-          <ion-label position="stacked">Description</ion-label>
+          <ion-label position="stacked">{{ t("Description") }}</ion-label>
           <ion-textarea 
             v-model="form.description" 
             placeholder="Tell us more..." 
@@ -46,7 +46,7 @@
           ></ion-textarea>
         </ion-item>
         <ion-item>
-          <ion-label position="stacked">Price</ion-label>
+          <ion-label position="stacked">{{ t("Price") }}</ion-label>
           <ion-input
             v-model="priceInput"
             type="number"
@@ -56,13 +56,13 @@
         </ion-item>
 
         <ion-item>
-          <ion-label position="stacked">Product Image (optional)</ion-label>
+          <ion-label position="stacked">{{ t("Product Image (optional)") }}</ion-label>
           <div class="image-actions">
             <ion-button size="small" fill="outline" @click="captureProductImage" :disabled="capturing">
-              Capture Photo
+              {{ t("Capture Photo") }}
             </ion-button>
             <ion-button size="small" fill="outline" @click="pickProductImage" :disabled="capturing">
-              Choose From Gallery
+              {{ t("Choose From Gallery") }}
             </ion-button>
           </div>
           <input type="file" accept="image/*" @change="onImageSelected" />
@@ -74,19 +74,20 @@
       </ion-list>
 
       <ion-item>
-        <ion-label position="stacked">Expires At</ion-label>
-        <ion-datetime v-model="form.expiresAt" presentation="date-time"></ion-datetime>
+        <ion-label position="stacked">{{ t("Expires At") }}</ion-label>
+        <ion-datetime v-model="form.expiresAt" presentation="date-time" :locale="currentLanguage === 'am' ? 'am-ET' : 'en-US'" :cancel-text="t('Cancel')" :done-text="t('Confirm')"></ion-datetime>
       </ion-item>
 
       <ion-button expand="block" class="ion-margin-top" @click="handleCreateJob" :disabled="loading">
         <ion-spinner v-if="loading" name="crescent"></ion-spinner>
-        <span v-else>Post Job</span>
+        <span v-else>{{ t("Post Job") }}</span>
       </ion-button>
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
+import { t, currentLanguage } from '@/utils/i18n';
 import { computed, ref } from 'vue';
 import { 
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, 

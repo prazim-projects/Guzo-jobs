@@ -3,9 +3,9 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/profile"></ion-back-button>
+          <ion-back-button :text="t('Back')" default-href="/profile"></ion-back-button>
         </ion-buttons>
-        <ion-title>Support</ion-title>
+        <ion-title>{{ t("Support") }}</ion-title>
       </ion-toolbar>
     </ion-header>
 
@@ -14,8 +14,8 @@
         <ion-refresher-content pulling-text="Pull to refresh" refreshing-spinner="circles" refreshing-text="Updating data..."></ion-refresher-content>
       </ion-refresher>
       <ion-item>
-        <ion-label position="stacked">Related Job (optional)</ion-label>
-        <ion-select v-model="selectedContractId" interface="action-sheet" placeholder="Choose a job contract">
+        <ion-label position="stacked">{{ t("Related Job (optional)") }}</ion-label>
+        <ion-select v-model="selectedContractId" interface="action-sheet" :cancel-text="t('Cancel')" :ok-text="t('Confirm')" :placeholder="t('Choose a job contract')">
           <ion-select-option v-for="contract in availableContracts" :key="contract.id" :value="contract.id">
             {{ contract.jobPost.title }} - {{ contract.status }}
           </ion-select-option>
@@ -23,22 +23,22 @@
       </ion-item>
 
       <ion-item>
-        <ion-label position="stacked">Subject</ion-label>
+        <ion-label position="stacked">{{ t("Subject") }}</ion-label>
         <ion-input v-model="subject" placeholder="What do you need help with?"></ion-input>
       </ion-item>
 
       <ion-item>
-        <ion-label position="stacked">Message</ion-label>
+        <ion-label position="stacked">{{ t("Message") }}</ion-label>
         <ion-textarea v-model="message" :rows="5" auto-grow placeholder="Describe the issue..."></ion-textarea>
       </ion-item>
 
       <ion-button expand="block" class="ion-margin-top" @click="submitTicket" :disabled="!subject || !message || submitting">
-        Submit Ticket
+        {{ t("Submit Ticket") }}
       </ion-button>
 
       <ion-list class="ion-margin-top" v-if="tickets.length">
         <ion-list-header>
-          <ion-label>Your Tickets</ion-label>
+          <ion-label>{{ t("Your Tickets") }}</ion-label>
         </ion-list-header>
         <ion-item v-for="ticket in tickets" :key="ticket.id" lines="full">
           <ion-label>

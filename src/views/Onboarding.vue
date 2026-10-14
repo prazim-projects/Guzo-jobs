@@ -7,7 +7,7 @@
         class="skip-button"
         @click="skipOnboarding"
       >
-        Skip
+        {{ t("Skip") }}
       </ion-button>
 
       <!-- Slides -->
@@ -89,7 +89,7 @@
                 @click="completeOnboarding"
               >
                 <ion-icon slot="start" name="checkmark-circle"></ion-icon>
-                Get Started
+                {{ t("Get Started") }}
               </ion-button>
             </div>
           </div>
@@ -115,7 +115,7 @@
           @click="backSlide"
         >
           <ion-icon slot="start" name="arrow-back"></ion-icon>
-          Back
+          {{ t("Back") }}
         </ion-button>
       </div>
 
@@ -126,7 +126,7 @@
           class="next-button"
           @click="nextSlide"
         >
-          Next
+          {{ t("Next") }}
           <ion-icon slot="end" name="arrow-forward"></ion-icon>
         </ion-button>
       </div>
@@ -135,6 +135,7 @@
 </template>
 
 <script lang="ts" setup>
+import { t } from '@/utils/i18n';
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {

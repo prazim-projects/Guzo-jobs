@@ -1,0 +1,8 @@
+.auth-form { max-width: 440px; margin: 24px auto; }
+.auth-form h1 { font-size: 24px; margin-bottom: 28px; }
+.auth-form ion-input.input-label-placement-stacked { min-height: 80px; margin: 20px 0 12px; --padding-top: 16px; --padding-bottom: 14px; --padding-start: 14px; --padding-end: 14px; }
+.auth-form ion-input.input-label-placement-stacked .native-input { margin-top: 16px; }
+.auth-form .password-help { font-size: 14px; line-height: 1.6; margin: 8px 0; }
+.password-actions { display: flex; flex-wrap: wrap; align-items: center; }
+.auth-form ion-button { white-space: normal; height: auto; min-height: 44px; }
+.form-error { color: var(--ion-color-danger); line-height: 1.5; }

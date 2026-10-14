@@ -3,11 +3,11 @@
     <ion-header v-if="!isFullscreen">
       <ion-toolbar color="primary">
         <ion-buttons slot="start">
-          <ion-back-button default-href="/profile"></ion-back-button>
+          <ion-back-button :text="t('Back')" default-href="/profile"></ion-back-button>
         </ion-buttons>
         <ion-title>Map of Ethiopia</ion-title>
         <ion-buttons slot="end">
-          <ion-button @click="toggleFullscreen">
+          <ion-button :aria-label="t('Toggle fullscreen')" @click="toggleFullscreen">
             <ion-icon :icon="isFullscreen ? contractOutline : expandOutline"></ion-icon>
           </ion-button>
         </ion-buttons>

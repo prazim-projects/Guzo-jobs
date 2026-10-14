@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { t } from '@/utils/i18n';
 import { IonPage, IonContent, IonButton, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton } from '@ionic/vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/userStore';
@@ -23,9 +24,9 @@ const handleLogout = async () => {
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/profile"></ion-back-button>
+          <ion-back-button :text="t('Back')" default-href="/profile"></ion-back-button>
         </ion-buttons>
-        <ion-title>Logout</ion-title>
+        <ion-title>{{ t("Logout") }}</ion-title>
       </ion-toolbar>
     </ion-header>
         <ion-content class="ion-padding">
@@ -35,7 +36,7 @@ const handleLogout = async () => {
                 Confirm Logout
             </ion-button>
             <IonButton fill="clear" @click="router.back()">
-                Cancel
+                {{ t("Cancel") }}
             </IonButton>
         </ion-content>
     </ion-page>
