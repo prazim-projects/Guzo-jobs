@@ -22,23 +22,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
-import {camera, trash, close} from 'ionicons/icons';
+import { ref } from 'vue';
+import {camera} from 'ionicons/icons';
 import { IonContent, IonItem, IonInput, IonIcon, IonFab, IonFabButton, IonGrid, IonImg, IonRow, IonCol, IonPage } from '@ionic/vue';
-import { usePhotoGallery, UserPhoto } from '@/composables/usePhotoGallery';
-import { useRouter } from 'vue-router';
+import { usePhotoGallery } from '@/composables/usePhotoGallery';
+
 
 
 const newNote = ref('');
 const { photos, takePhoto } = usePhotoGallery();
 // const { takePhoto, photos, deletePhoto } = usePhotoGallery();
 
-const router = useRouter()
 
 
-function addNote() {
-    console.log("Note added:", newNote.value);
-}
+
+
 
 </script>
 

@@ -123,6 +123,8 @@
           </ion-card-header>
           <ion-card-content>
             <ion-button expand="block" fill="outline" @click="switchLanguage">{{ languageButtonLabel }}</ion-button>
+            <ion-button v-if="!userData.faydaLinked" expand="block" fill="outline" :disabled="linkingFayda" @click="handleLinkFayda">Link Fayda</ion-button>
+            <p v-else>Fayda connected</p>
             <ion-button expand="block" fill="outline" router-link="/notifications" class="notification-quick-action">
               {{ t("Notifications") }}
               <ion-badge v-if="unreadNotificationsCount > 0" color="danger" class="quick-action-badge">
@@ -166,6 +168,7 @@ import { gql } from '@apollo/client/core'
 import { useAuthStore } from '@/stores/userStore'
 import { useToast } from '@/composables/useToast'
 import { currentLanguage, t, toggleLanguage } from '@/utils/i18n'
+import { faydaPlatform, openFaydaUrl } from '@/utils/fayda'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader,
   IonCardTitle, IonCardSubtitle, IonCardContent, IonList, IonItem, IonLabel,
@@ -187,6 +190,7 @@ const GET_USER = gql`
       phoneNumber
       bio
       profilePicture
+      faydaLinked
     }
     myTransactionSummary {
       totalPaid
@@ -207,6 +211,14 @@ const UPDATE_PROFILE = gql`
         bio
         profilePicture
       }
+    }
+  }
+`
+
+const BEGIN_FAYDA_LINK = gql`
+  mutation BeginFaydaLink($platform: String!) {
+    beginFaydaLink(platform: $platform) {
+      authorizationUrl
     }
   }
 `
@@ -239,6 +251,28 @@ const { result: notificationResult, refetch: refetchNotifications } = useQuery(M
 
 
 const { mutate: editProfile, onDone, onError } = useMutation(UPDATE_PROFILE);
+const { mutate: beginFaydaLink } = useMutation(BEGIN_FAYDA_LINK);
+const linkingFayda = ref(false)
+
+const handleLinkFayda = async () => {
+  if (linkingFayda.value) return
+  linkingFayda.value = true
+  try {
+    const response = await beginFaydaLink({ platform: faydaPlatform() })
+    const url = response?.data?.beginFaydaLink?.authorizationUrl
+    if (!url) throw new Error('Could not start Fayda linking.')
+    await openFaydaUrl(url)
+  } catch (error) {
+    const notice = await toastController.create({
+      message: error instanceof Error ? error.message : 'Could not link Fayda.',
+      duration: 3000,
+      color: 'danger',
+    })
+    await notice.present()
+  } finally {
+    linkingFayda.value = false
+  }
+}
 
 const updating = ref(false)
 const updateError = ref<Error | null>(null)

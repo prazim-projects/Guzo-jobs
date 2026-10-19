@@ -12,7 +12,9 @@ export const usePhotoGallery = () => {
   };
 
   const takePhoto = async () => {
-    const photo = await Camera.getPhoto({
+    const { defineCustomElements } = await import('@ionic/pwa-elements/loader');
+      await defineCustomElements(window);
+      const photo = await Camera.getPhoto({
       resultType: CameraResultType.Uri,
       source: CameraSource.Camera,
       quality: 90,

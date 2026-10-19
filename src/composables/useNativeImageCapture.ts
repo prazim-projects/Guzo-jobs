@@ -14,6 +14,8 @@ export const useNativeImageCapture = () => {
   const capture = async (source: CameraSource = CameraSource.Camera): Promise<NativeImageCaptureResult | null> => {
     capturing.value = true;
     try {
+      const { defineCustomElements } = await import('@ionic/pwa-elements/loader');
+      await defineCustomElements(window);
       const photo = await Camera.getPhoto({
         resultType: CameraResultType.DataUrl,
         source,

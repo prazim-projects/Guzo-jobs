@@ -15,11 +15,12 @@
       </ion-refresher>
       <ion-item>
         <ion-label position="stacked">{{ t("Related Job (optional)") }}</ion-label>
-        <ion-select v-model="selectedContractId" interface="action-sheet" :cancel-text="t('Cancel')" :ok-text="t('Confirm')" :placeholder="t('Choose a job contract')">
-          <ion-select-option v-for="contract in availableContracts" :key="contract.id" :value="contract.id">
+        <select class="native-control" v-model="selectedContractId" :aria-label="t('Related Job (optional)')">
+          <option :value="null">{{ t("Choose a job contract") }}</option>
+          <option v-for="contract in availableContracts" :key="contract.id" :value="contract.id">
             {{ contract.jobPost.title }} - {{ contract.status }}
-          </ion-select-option>
-        </ion-select>
+          </option>
+        </select>
       </ion-item>
 
       <ion-item>
@@ -70,8 +71,6 @@ import {
   IonItem,
   IonLabel,
   IonInput,
-  IonSelect,
-  IonSelectOption,
   IonTextarea,
   IonButton,
   IonList,
@@ -89,7 +88,7 @@ const submitting = ref(false);
 
 const MY_ACTIVE_CONTRACTS = gql`
   query MyActiveContractsForSupport {
-    allJobs {
+    myJobs {
       id
       title
       user { id }
@@ -144,7 +143,7 @@ const { result: activeContractsResult, refetch: refetchActiveContracts } = useQu
 const tickets = computed(() => result.value?.mySupportTickets || []);
 const userId = computed(() => localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') || '{}')?.id : null);
 const availableContracts = computed(() => {
-  const jobs = activeContractsResult.value?.allJobs || [];
+  const jobs = activeContractsResult.value?.myJobs || [];
   const flatContracts = jobs.flatMap((job: any) => job.contracts || []);
   const mine = flatContracts.filter((contract: any) => {
     const isPoster = String(jobOwnerIdForContract(jobs, contract.id)) === String(userId.value || '');

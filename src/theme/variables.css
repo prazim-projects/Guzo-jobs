@@ -1,2 +1,17 @@
 /* For information on how to create your own theme, please see:
 http://ionicframework.com/docs/theming/ */
+
+/* Native form controls avoid loading calendar and overlay stacks at app startup. */
+.native-control {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 8px 0;
+  padding: 8px;
+  font: inherit;
+  color: var(--ion-text-color);
+  background: var(--ion-background-color);
+  border: 1px solid var(--ion-color-medium);
+  border-radius: 6px;
+  color-scheme: dark;
+}

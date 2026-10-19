@@ -41,7 +41,7 @@ import {
   IonContent,
   IonRefresher,
   IonRefresherContent,
-  IonFooter,
+
   RefresherCustomEvent,
   toastController,
   onIonViewDidEnter,
