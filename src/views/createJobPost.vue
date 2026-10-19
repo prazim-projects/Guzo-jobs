@@ -17,12 +17,12 @@
         <!-- Post Type Selection -->
         <ion-item>
           <ion-label position="stacked">{{ t("Post Type") }}</ion-label>
-          <ion-select v-model="form.postType" interface="popover" :cancel-text="t('Cancel')" :ok-text="t('Confirm')">
-            <ion-select-option value="Transport">{{ t("Transport") }}</ion-select-option>
-            <ion-select-option value="Delivery">{{ t("Delivery") }}</ion-select-option>
-            <ion-select-option value="Odd Job"> {{ t("Odd Job") }}</ion-select-option>
-            <ion-select-option value="Trade">{{ t("Trade") }}</ion-select-option>
-          </ion-select>
+          <select class="native-control" v-model="form.postType" :aria-label="t('Post Type')">
+            <option value="Transport">{{ t("Transport") }}</option>
+            <option value="Delivery">{{ t("Delivery") }}</option>
+            <option value="Odd Job"> {{ t("Odd Job") }}</option>
+            <option value="Trade">{{ t("Trade") }}</option>
+          </select>
         </ion-item>
 
         <!-- Origin and Destination -->
@@ -35,13 +35,13 @@
           <ion-label position="stacked">{{ t("To (Destination)") }}</ion-label>
           <ion-input v-model="form.destination" placeholder="e.g. Hawassa"></ion-input>
         </ion-item>
-       
+
         <!-- Description -->
         <ion-item>
           <ion-label position="stacked">{{ t("Description") }}</ion-label>
-          <ion-textarea 
-            v-model="form.description" 
-            placeholder="Tell us more..." 
+          <ion-textarea
+            v-model="form.description"
+            placeholder="Tell us more..."
             :auto-grow="true"
           ></ion-textarea>
         </ion-item>
@@ -74,8 +74,8 @@
       </ion-list>
 
       <ion-item>
-        <ion-label position="stacked">{{ t("Expires At") }}</ion-label>
-        <ion-datetime v-model="form.expiresAt" presentation="date-time" :locale="currentLanguage === 'am' ? 'am-ET' : 'en-US'" :cancel-text="t('Cancel')" :done-text="t('Confirm')"></ion-datetime>
+        <label for="job-expiry">{{ t("Expires At") }}</label>
+        <input class="native-control" id="job-expiry" v-model="expiryInput" type="datetime-local" :min="minimumExpiry" required />
       </ion-item>
 
       <ion-button expand="block" class="ion-margin-top" @click="handleCreateJob" :disabled="loading">
@@ -87,12 +87,12 @@
 </template>
 
 <script setup lang="ts">
-import { t, currentLanguage } from '@/utils/i18n';
+import { t } from '@/utils/i18n';
 import { computed, ref } from 'vue';
-import { 
-  IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, 
-  IonLabel, IonInput, IonTextarea, IonSelect, IonSelectOption, IonButton, 
-  IonSpinner, IonDatetime, toastController
+import {
+  IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem,
+  IonLabel, IonInput, IonTextarea, IonButton,
+  IonSpinner, toastController
 } from '@ionic/vue';
 import { useMutation } from '@vue/apollo-composable';
 import gql from 'graphql-tag';
@@ -110,7 +110,14 @@ const form = ref({
   description: '',
   productImage: '',
   price: 0,
-  expiresAt: new Date().toISOString()
+  expiresAt: new Date(Date.now() + 86400000).toISOString()
+});
+
+const localDateTime = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const minimumExpiry = localDateTime(new Date());
+const expiryInput = computed({
+  get: () => form.value.expiresAt ? localDateTime(new Date(form.value.expiresAt)) : '',
+  set: (value: string) => { form.value.expiresAt = value ? new Date(value).toISOString() : ''; },
 });
 
 const priceInput = computed({
@@ -179,7 +186,7 @@ const pickProductImage = () => applyCapturedImage(pickFromGallery);
 
 const handleCreateJob = async () => {
   const isLocalJob = form.value.postType === 'Odd Job' || form.value.postType === 'Trade';
-  
+
   if (isLocalJob) {
     form.value.destination = form.value.origin;
   } else if (!form.value.destination) {
@@ -187,7 +194,7 @@ const handleCreateJob = async () => {
     return;
   }
   try{
-    const result = await createJob({
+    await createJob({
       title: form.value.title,
       postType: form.value.postType,
       origin: form.value.origin,

@@ -112,6 +112,11 @@
     </ion-row>
   </ion-grid>
 
+  <p v-if="!loading && !error && !result?.availableJobs?.length" role="status" class="ion-padding">No jobs available yet.</p>
+  <div class="ion-padding" aria-label="Job pages">
+    <ion-button v-if="pageOffset > 0" :disabled="loading" @click="changePage(-1)">Previous jobs</ion-button>
+    <ion-button v-if="result?.availableJobs?.length === 50" :disabled="loading" @click="changePage(1)">Next jobs</ion-button>
+  </div>
   <ion-text v-if="loading" class="ion-padding ion-text-center">Loading...</ion-text>
   <ion-text v-if="error" color="danger" class="ion-padding">Error: {{ error.message }}</ion-text>
 </ion-content>
@@ -243,8 +248,8 @@ const ACCEPT_JOB_MUTATION = gql`
 
 // GraphQL query to fetch jobs
 const JOB_QUERY = gql`
-  query JOB_QUERY {
-    availableJobs {
+  query JOB_QUERY($offset: Int = 0) {
+    availableJobs(limit: 50, offset: $offset) {
       description
       expiresAt
       id
@@ -257,8 +262,8 @@ const JOB_QUERY = gql`
 `;
 
 const JOB_QUERY_AUTHENTICATED = gql`
-  query JOB_QUERY_AUTHENTICATED {
-    availableJobs {
+  query JOB_QUERY_AUTHENTICATED($offset: Int = 0) {
+    availableJobs(limit: 50, offset: $offset) {
       description
       expiresAt
       id
@@ -309,7 +314,7 @@ const handleJobConfirmation = async (contract: NonNullable<Job['contracts']>[num
     });
     console.log('Job confirmed:', result);
     const toast = await toastController.create({
-      message: 'Job confirmed. Request poster to fund escrow via Telebirr before work starts.',
+      message: 'Job confirmed. Request poster to fund escrow via CBE or Telebirr before work starts.',
       duration: 2800,
       color: 'success',
       position: 'bottom',
@@ -434,6 +439,7 @@ const doRefresh = async (event: RefresherCustomEvent) => {
   }
 };
 
+const pageOffset = ref(0);
 const result = ref<AllJobsQuery | undefined>();
 const loading = ref(true);
 const error = ref<Error | null>(null);
@@ -467,7 +473,13 @@ onBeforeUnmount(() => {
 });
 
 const hardRefreshData = async () => {
-  await jobsObservable.refetch();
+  await jobsObservable.refetch({ offset: pageOffset.value });
+};
+const changePage = async (direction: number) => {
+  const previous = pageOffset.value;
+  pageOffset.value = Math.max(0, pageOffset.value + direction * 50);
+  try { await hardRefreshData(); }
+  catch { pageOffset.value = previous; }
 };
 
 

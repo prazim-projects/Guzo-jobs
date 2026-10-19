@@ -65,7 +65,7 @@
               <div v-if="getUserAcceptedContract(job)?.acceptor?.id === authStore.user?.id">
                 <p><strong>Posted by:</strong> {{ job.user?.username }}</p>
                 <div v-if="getUserAcceptedContract(job)?.status === 'ACCEPTED'">
-                  <p v-if="!hasPaidEscrow(getUserAcceptedContract(job))"><strong>Status:</strong> Waiting for poster escrow deposit via Telebirr</p>
+                  <p v-if="!hasPaidEscrow(getUserAcceptedContract(job))"><strong>Status:</strong> Waiting for poster escrow deposit via CBE or Telebirr</p>
                   <p v-else><strong>Status:</strong> Escrow funded, job in progress</p>
                   <ion-button v-if="hasPaidEscrow(getUserAcceptedContract(job))" expand="block" color="success" @click="completeJob(getUserAcceptedContract(job)?.id!)">
                     {{ t("Mark as Completed") }}
@@ -92,36 +92,7 @@
                 <div v-if="getUserAcceptedContract(job)?.status === 'ACCEPTED'">
                   <p v-if="!hasPaidEscrow(getUserAcceptedContract(job))"><strong>Status:</strong> Deposit full amount to escrow before work starts</p>
                   <p v-else><strong>Status:</strong> Escrow funded. Waiting for {{ getUserAcceptedContract(job)?.acceptor?.username }} to complete</p>
-                  <div v-if="!hasPaidEscrow(getUserAcceptedContract(job))" class="escrow-guide">
-                    <p><strong>Escrow Steps</strong></p>
-                    <p>1. Send <strong>ETB{{ job.price }}</strong> via Telebirr to:</p>
-                    <p><strong>{{ platformTelebirrReceiverName }}</strong> ({{ platformTelebirrPhone }})</p>
-                    <p>2. Copy your Telebirr receipt link.</p>
-                    <p>3. Paste the link below and tap verify.</p>
-                    <div class="guide-actions">
-                      <ion-button size="small" fill="outline" @click="copyReceiverPhone">
-                        {{ t("Copy Phone") }}
-                      </ion-button>
-                      <ion-button size="small" fill="outline" :href="TELEBIRR_RECEIPT_PREFIX" target="_blank" rel="noopener noreferrer">
-                        {{ t("Open Receipt Portal") }}
-                      </ion-button>
-                    </div>
-                  </div>
-                  <ion-item v-if="!hasPaidEscrow(getUserAcceptedContract(job))" lines="none">
-                    <ion-label position="stacked">Telebirr Receipt Link</ion-label>
-                    <ion-input
-                      v-model="receiptLinks[getUserAcceptedContract(job)?.id || '']"
-                      placeholder="https://transactioninfo.ethiotelecom.et/receipt/DDJ..."
-                    ></ion-input>
-                  </ion-item>
-                  <ion-button
-                    v-if="!hasPaidEscrow(getUserAcceptedContract(job))"
-                    expand="block"
-                    color="secondary"
-                    @click="fundEscrow(getUserAcceptedContract(job)?.id!)"
-                  >
-                    {{ t("Verify Telebirr Receipt and Fund Escrow") }}
-                  </ion-button>
+                  <EscrowFunding v-if="!hasPaidEscrow(getUserAcceptedContract(job))" :contract-id="getUserAcceptedContract(job)?.id!" :amount="getUserAcceptedContract(job)?.agreedPrice ?? job.price" @funded="hardRefreshData({ force: true })" />
                   <ion-button v-if="hasPaidEscrow(getUserAcceptedContract(job))" expand="block" color="success" @click="completeJob(getUserAcceptedContract(job)?.id!)">
                     {{ t("Mark as Completed") }}
                   </ion-button>
@@ -160,7 +131,7 @@
               
               <!-- For acceptors: show completion status -->
               <div v-if="getUserCompletedContract(job)?.acceptor?.id === authStore.user?.id">
-                <p><strong>Status:</strong> Job completed</p>
+                <p><strong>Status:</strong> Job completed. Payout is handled by support.</p>
                 <p><strong>Posted by:</strong> {{ job.user?.username }}</p>
               </div>
               
@@ -214,11 +185,14 @@
 
       <ion-text v-if="activeLoading" class="ion-padding ion-text-center">Loading...</ion-text>
       <ion-text v-if="activeError" color="danger" class="ion-padding">Error: {{ activeError.message }}</ion-text>
+      <ion-button v-if="hasMoreJobs" expand="block" fill="outline" :disabled="activeLoading" @click="loadMoreJobs">Load more jobs</ion-button>
     </ion-content>
   </ion-page>
 </template>
 
 <script lang="ts" setup>
+import EscrowFunding from "@/components/EscrowFunding.vue";
+import { hasPaidEscrow } from '@/utils/payments';
 import { gql } from '@apollo/client/core'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/userStore'
@@ -241,8 +215,6 @@ import {
   IonCardTitle,
   IonCardSubtitle,
   IonCardContent,
-  IonItem,
-  IonInput,
   IonButton,
   IonBadge,
   IonText,
@@ -255,10 +227,6 @@ const { client } = useApolloClient()
 type JobsSegment = 'posted' | 'accepted' | 'completed' | 'pending'
 
 const selectedSegment = ref<JobsSegment>('posted')
-const receiptLinks = ref<Record<string, string>>({})
-const platformTelebirrPhone = import.meta.env.VITE_PLATFORM_TELEBIRR_PHONE || '+2519XXXXXXXX'
-const platformTelebirrReceiverName = import.meta.env.VITE_PLATFORM_TELEBIRR_RECEIVER_NAME || 'Bealprasim Demere Tefera'
-const TELEBIRR_RECEIPT_PREFIX = 'https://transactioninfo.ethiotelecom.et/receipt/'
 const SEGMENT_STALE_MS = 60_000
 const REFRESH_DEDUPE_MS = 10_000
 
@@ -282,12 +250,12 @@ interface Job {
   };
   contracts?: {
     id: string;
+    agreedPrice: number;
     status: string;
     acceptor?: {
       id: string;
       username: string;
     };
-  }[];
     preferredPaymentMethod?: string;
     escrowPayments?: {
       id: string;
@@ -295,6 +263,7 @@ interface Job {
       paymentMethod: string;
       amount: number;
     }[];
+  }[];
 }
 
 interface AllJobsQuery {
@@ -328,6 +297,7 @@ const JOB_FIELDS = gql`
     contracts {
       id
       status
+      agreedPrice
       preferredPaymentMethod
       escrowPayments {
         id
@@ -345,8 +315,8 @@ const JOB_FIELDS = gql`
 
 const JOB_QUERY_AUTHENTICATED = gql`
   ${JOB_FIELDS}
-  query JOB_QUERY_AUTHENTICATED {
-    myJobs {
+  query JOB_QUERY_AUTHENTICATED($offset: Int = 0) {
+    myJobs(limit: 50, offset: $offset) {
       ...MyJobsFields
     }
   }
@@ -429,22 +399,6 @@ const DELETE_JOB_MUTATION = gql`
   }
 `;
 
-const INITIATE_ESCROW_MUTATION = gql`
-  mutation InitiateEscrowPayment($contractId: ID!, $receiptUrl: String!) {
-    initiateEscrowPayment(contractId: $contractId, receiptUrl: $receiptUrl) {
-      verified
-      message
-      payment {
-        id
-        status
-        paymentMethod
-        receiptUrl
-        verificationNote
-      }
-    }
-  }
-`;
-
 const CREATE_COMPLAINT_MUTATION = gql`
   mutation CreateComplaint($contractId: ID!, $reason: String!) {
     createComplaint(contractId: $contractId, reason: $reason) {
@@ -456,6 +410,21 @@ const CREATE_COMPLAINT_MUTATION = gql`
 `;
 
 const getSegmentJobs = (segment: JobsSegment) => segmentState[segment].jobs;
+const moreJobsAvailable = ref(true);
+const hasMoreJobs = computed(() => moreJobsAvailable.value && getSegmentJobs(selectedSegment.value).length >= 50);
+const loadMoreJobs = async () => {
+  const state = segmentState[selectedSegment.value];
+  if (state.loading) return;
+  state.loading = true;
+  try {
+    const { data } = await client.query<AllJobsQuery>({ query: JOB_QUERY_AUTHENTICATED,
+      variables: { offset: state.jobs.length }, fetchPolicy: 'network-only' });
+    const next = data.myJobs || [];
+    moreJobsAvailable.value = next.length === 50;
+    setAllSegmentJobs([...new Map([...state.jobs, ...next].map(job => [job.id, job])).values()]);
+  } catch (error) { state.error = error instanceof Error ? error : new Error('Could not load more jobs.'); }
+  finally { state.loading = false; }
+};
 
 const shouldFetchSegment = (segment: JobsSegment, preferNetwork = false) => {
   const state = segmentState[segment];
@@ -516,6 +485,7 @@ const hardRefreshData = async (options: { force?: boolean } = {}) => {
     query: JOB_QUERY_AUTHENTICATED,
     fetchPolicy: 'network-only',
   }).then(({ data }) => {
+    moreJobsAvailable.value = (data.myJobs || []).length === 50;
     setAllSegmentJobs(data.myJobs || []);
     allSegmentsLastFetched = Date.now();
   }).catch((error: Error) => {
@@ -556,8 +526,8 @@ const postedJobs = computed(() => {
 const acceptedJobs = computed(() => {
   return getSegmentJobs('accepted').filter(job => 
     job.contracts?.some(contract => 
-      (isCurrentUserId(contract.acceptor?.id, authStore.user?.id) && (contract.status === 'ACCEPTED' || contract.status === 'COMPLETED_BY_ACCEPTOR')) ||
-      (isCurrentUserId(job.user?.id, authStore.user?.id) && (contract.status === 'ACCEPTED' || contract.status === 'COMPLETED_BY_ACCEPTOR'))
+      (isCurrentUserId(contract.acceptor?.id, authStore.user?.id) || isCurrentUserId(job.user?.id, authStore.user?.id)) &&
+      ['ACCEPTED', 'COMPLETED_BY_ACCEPTOR', 'COMPLETED_BY_POSTER'].includes(contract.status)
     )
   );
 });
@@ -654,76 +624,6 @@ const deleteJob = async (jobId: string) => {
   }
 };
 
-const fundEscrow = async (contractId: string) => {
-  const receiptUrl = (receiptLinks.value[contractId] || '').trim();
-  if (!receiptUrl) {
-    const toast = await toastController.create({ message: 'Receipt URL is required.', duration: 2200, color: 'warning' });
-    await toast.present();
-    return;
-  }
-
-  if (!receiptUrl.startsWith(TELEBIRR_RECEIPT_PREFIX)) {
-    const toast = await toastController.create({
-      message: `Use a valid Telebirr receipt link starting with ${TELEBIRR_RECEIPT_PREFIX}`,
-      duration: 3200,
-      color: 'warning',
-      position: 'bottom',
-      positionAnchor: 'main-tab-bar',
-    });
-    await toast.present();
-    return;
-  }
-
-  try {
-    const response = await client.mutate({
-      mutation: INITIATE_ESCROW_MUTATION,
-      variables: {
-        contractId,
-        receiptUrl,
-      }
-    });
-
-    const payload = response.data?.initiateEscrowPayment;
-    const toast = await toastController.create({
-      message: `${payload?.message || 'Verification submitted.'} ${t('refresh_notice')}`,
-      duration: 3000,
-      color: payload?.verified ? 'success' : 'warning',
-      position: 'bottom',
-      positionAnchor: 'main-tab-bar',
-    });
-    await toast.present();
-    await hardRefreshData({ force: true });
-  } catch (error) {
-    console.error('Error funding escrow:', error);
-    const message = error instanceof Error ? error.message : String(error);
-    const toast = await toastController.create({ message, duration: 3000, color: 'danger' });
-    await toast.present();
-  }
-};
-
-const copyReceiverPhone = async () => {
-  try {
-    await navigator.clipboard.writeText(platformTelebirrPhone);
-    const toast = await toastController.create({
-      message: `Receiver phone copied: ${platformTelebirrPhone}`,
-      duration: 2000,
-      color: 'success',
-      position: 'bottom',
-      positionAnchor: 'main-tab-bar',
-    });
-    await toast.present();
-  } catch {
-    const toast = await toastController.create({
-      message: `Receiver phone: ${platformTelebirrPhone}`,
-      duration: 2500,
-      color: 'medium',
-      position: 'bottom',
-      positionAnchor: 'main-tab-bar',
-    });
-    await toast.present();
-  }
-};
-
 const openComplaint = async (contractId: string) => {
   try {
     await client.mutate({
@@ -739,8 +639,6 @@ const openComplaint = async (contractId: string) => {
   }
 };
 
-const hasPaidEscrow = (_contract?: unknown) => true;
-
 
 const getUserPendingContract = (job: Job) => {
   // Return the user's own pending contract (for acceptors)
@@ -753,14 +651,14 @@ const getUserAcceptedContract = (job: Job) => {
   // Find the contract where the current user is the acceptor
   const acceptorContract = job.contracts?.find(contract => 
     isCurrentUserId(contract.acceptor?.id, authStore.user?.id) && 
-    (contract.status === 'ACCEPTED' || contract.status === 'COMPLETED_BY_ACCEPTOR')
+    ['ACCEPTED', 'COMPLETED_BY_ACCEPTOR', 'COMPLETED_BY_POSTER'].includes(contract.status)
   );
   if (acceptorContract) return acceptorContract;
   
   // Find the contract where the current user is the poster
   return job.contracts?.find(contract => 
     isCurrentUserId(job.user?.id, authStore.user?.id) && 
-    (contract.status === 'ACCEPTED' || contract.status === 'COMPLETED_BY_ACCEPTOR')
+    ['ACCEPTED', 'COMPLETED_BY_ACCEPTOR', 'COMPLETED_BY_POSTER'].includes(contract.status)
   );
 };
 
