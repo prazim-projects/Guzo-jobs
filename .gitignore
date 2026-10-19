@@ -33,11 +33,13 @@ npm-debug.log*
 /www
 \guzo-jobs-back/__pycache__/
 \guzo-jobs-back/*.pyc
+# Temporary: production has a different migration history. See docs/MIGRATIONS.md.
+/guzo-jobs-back/api/migrations/
 \guzo-jobs-back/guzo_jobs_backend/__pycache__/
 \guzo-jobs-back/guzo_jobs_backend/*.pyc
 \guzo-jobs-back/api/__pycache__/
 # \guzo-jobs-back/api/
-guzo-jobs-back/api/migrations
+guzo-jobs-back/api/migrations/__pycache__/
 \guzo-jobs-back/api/*.pyc
 \guzo-jobs-back/api.zip
 \guzo-jobs-back/db.sqlite3
@@ -53,3 +55,44 @@ src/mutations.gql
 .env.example
 guzo-jobs-back/guzo_jobs_backend/settings_prod.py
 .test-deps/
+
+# Local runtimes, caches and generated Python artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.tsbuildinfo
+
+# Environment-specific configuration and private keys
+.env.*
+!.env.example
+!.env.*.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+android/keystore.properties
+
+# Local databases, backups and uploaded user content
+*.sqlite3
+*.sqlite3-*
+*.sqlite
+*.sqlite-*
+*.bak
+/guzo-jobs-back/media/
+/guzo-jobs-back/staticfiles/
+
+# Generated test reports (keep test sources and written audit reports)
+/docs/audit/results/
+/docs/performance/results/
+/cypress/screenshots/
+/cypress/videos/
+/test-results/
+/playwright-report/
+.lighthouseci/
+docs/*
