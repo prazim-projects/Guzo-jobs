@@ -85,5 +85,7 @@ class DeleteAccount(graphene.Mutation):
         contracts = Contract.objects.filter(Q(poster=user) | Q(acceptor=user))
         if contracts.exclude(status__in=['PENDING', 'COMPLETED', 'CANCELLED']).exists() or EscrowPayment.objects.filter(contract__in=contracts, status='PAID').exists():
             raise GraphQLError('active_contracts')
+        if EscrowPayment.objects.filter(Q(payer=user) | Q(contract__in=contracts)).exists():
+            raise GraphQLError('Contact support to close an account with payment history.')
         user.delete()
         return cls(success=True)

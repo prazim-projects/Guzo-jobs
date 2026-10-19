@@ -2,7 +2,8 @@ import graphql_jwt
 import graphene
 from .account import validate_strong_password, RequestPasswordReset, ResetPassword, DeleteAccount
 from graphql import GraphQLError
-from django.conf import settings
+from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from graphql_jwt.shortcuts import create_refresh_token, get_token
@@ -17,12 +18,14 @@ from .types import (
     NotificationType,
 )
 from .models import *
+from .fayda import authorization_url
+from .payments import fund_escrow, throttle_verification
+from .receipts import ReceiptError
 from .utils import (
     create_notification,
     validate_product_image,
     is_same_user,
     can_delete_job_post,
-    verify_telebirr_receipt_details,
 )
 
 
@@ -52,6 +55,22 @@ class editProfile(graphene.Mutation):
 
         user.save()
         return editProfile(user=user)
+
+
+class BeginFaydaLink(graphene.Mutation):
+    authorization_url = graphene.String()
+
+    class Arguments:
+        platform = graphene.String(required=True)
+
+    @classmethod
+    def mutate(cls, root, info, platform):
+        user = info.context.user
+        if user.is_anonymous:
+            raise Exception('You must be logged in to link Fayda.')
+        if FaydaIdentity.objects.filter(user=user).exists():
+            raise Exception('This account is already linked to Fayda.')
+        return BeginFaydaLink(authorization_url=authorization_url(platform, user=user))
     
 
 class RegisterUser(graphene.Mutation):
@@ -106,8 +125,16 @@ class createJobPost(graphene.Mutation):
         if user.is_anonymous:
             raise Exception("you must be logged in to create a job post.")
 
-        if (price < 0):
-            raise Exception("Money can't be less than 0 birr")
+        if price <= 0:
+            raise GraphQLError('Price must be greater than zero.')
+        if expires_at <= timezone.now():
+            raise GraphQLError('Expiry must be in the future.')
+        aliases = {'Delivery': 'DELIVERY', 'Transport': 'TRANSPORT', 'Odd Job': 'ODDJOB', 'Odd-job': 'ODDJOB', 'Trade': 'TRADE'}
+        post_type = aliases.get(post_type, post_type)
+        if post_type not in JobPosting.PostType.values:
+            raise GraphQLError('Invalid job type.')
+        if not all(value.strip() for value in [title, description, origin, destination]):
+            raise GraphQLError('Job details are required.')
 
         product_image = validate_product_image(product_image)
 
@@ -136,18 +163,26 @@ class acceptJobPost(graphene.Mutation):
     contract = graphene.Field(lambda: ContractType)
 
     @classmethod
+    @transaction.atomic
     def mutate(cls, root, info, job_post_id, status=None, preferred_payment_method=None, preferred_chapa_bank=None):
         user = info.context.user
         if user.is_anonymous:
             raise Exception("You must be logged in to Interact with job post.")
        
         try:
-            job_post = JobPosting.objects.get(pk=job_post_id)
+            job_post = JobPosting.objects.select_for_update().get(pk=job_post_id)
         except JobPosting.DoesNotExist:
             raise Exception("Job post not found.")
 
         if is_same_user(job_post.user_id, user.id):
             raise Exception("You cannot accept your own job post")
+
+        if job_post.expires_at <= timezone.now():
+            raise GraphQLError('This job has expired.')
+        if status not in (None, 'PENDING'):
+            raise GraphQLError('Applications must start pending owner approval.')
+        if Contract.objects.filter(job_post=job_post).exclude(status__in=['PENDING', 'CANCELLED']).exists():
+            raise GraphQLError('This job is no longer available.')
 
         existing_application = Contract.objects.filter(
             job_post=job_post, 
@@ -168,7 +203,7 @@ class acceptJobPost(graphene.Mutation):
             job_post=job_post,
             poster=job_post.user,
             acceptor=user,
-            status=status if status else Contract.Status.PENDING,
+            status=Contract.Status.PENDING,
             agreed_price=job_post.price if job_post.price else 0.0,
             preferred_payment_method=preferred_method,
             preferred_chapa_bank=normalized_bank,
@@ -193,6 +228,7 @@ class ConfirmJobAcceptance(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @transaction.atomic
     def mutate(cls, root, info, contract_id):
         user = info.context.user
         if user.is_anonymous:
@@ -206,6 +242,12 @@ class ConfirmJobAcceptance(graphene.Mutation):
         if not is_same_user(contract.poster_id, user.id):
             raise Exception("Only the job owner can confirm acceptance.")
 
+        JobPosting.objects.select_for_update().get(pk=contract.job_post_id)
+        contract.refresh_from_db()
+        if contract.job_post.expires_at <= timezone.now():
+            raise GraphQLError('This job has expired.')
+        if Contract.objects.filter(job_post_id=contract.job_post_id).exclude(pk=contract.pk).exclude(status__in=['PENDING', 'CANCELLED']).exists():
+            raise GraphQLError('This job already has an active contract.')
         if contract.status != Contract.Status.PENDING:
             raise Exception("This contract is not in pending status.")
 
@@ -242,83 +284,13 @@ class InitiateEscrowPayment(graphene.Mutation):
 
     @classmethod
     def mutate(cls, root, info, contract_id, receipt_url):
-        user = info.context.user
-        if user.is_anonymous:
-            raise Exception('You must be logged in to fund escrow.')
-
         try:
-            contract = Contract.objects.get(pk=contract_id)
-        except Contract.DoesNotExist:
-            raise Exception('Contract not found.')
+            throttle_verification(info.context.user)
+            payment = fund_escrow(info.context.user, contract_id, receipt_url)
+        except (ReceiptError, Contract.DoesNotExist) as error:
+            return cls(payment=None, verified=False, message=str(error) if isinstance(error, ReceiptError) else 'Contract not found.')
+        return cls(payment=payment, verified=True, message='Receipt verified. Escrow is funded.')
 
-        if not is_same_user(contract.poster_id, user.id):
-            raise Exception('Only the job poster can fund escrow.')
-
-        if contract.status != Contract.Status.ACCEPTED:
-            raise Exception('Escrow can only be funded after acceptance.')
-
-        if EscrowPayment.objects.filter(contract=contract, status=EscrowPayment.Status.PAID).exists():
-            raise Exception('Escrow is already funded for this contract.')
-
-        telebirr_receiver_name = getattr(settings, 'TELEBIRR_RECEIVER_NAME', '')
-        telebirr_receiver_phone = getattr(settings, 'TELEBIRR_RECEIVER_PHONE', '')
-        missing = []
-        if not telebirr_receiver_name:
-            missing.append('TELEBIRR_RECEIVER_NAME')
-        if not telebirr_receiver_phone:
-            missing.append('TELEBIRR_RECEIVER_PHONE')
-        if missing:
-            raise Exception(f'Telebirr receiver configuration missing: {", ".join(missing)}')
-
-        payment = EscrowPayment.objects.create(
-            contract=contract,
-            payer=user,
-            amount=contract.agreed_price,
-            payment_method=EscrowPayment.Method.TELEBIRR,
-            tx_ref='PENDING_VERIFICATION',
-            receipt_url=receipt_url,
-            status=EscrowPayment.Status.INITIATED,
-            verification_note='Receipt submitted. Pending verification.',
-        )
-
-        try:
-            parsed = verify_telebirr_receipt_details(
-                receipt_url=receipt_url,
-                expected_amount=contract.agreed_price,
-                receiver_name=telebirr_receiver_name,
-                receiver_phone=telebirr_receiver_phone,
-            )
-            payment.tx_ref = parsed['tx_ref']
-            payment.status = EscrowPayment.Status.PAID
-            payment.verified_at = timezone.now()
-            payment.verification_note = (
-                f"Verified telebirr receipt ({parsed.get('payment_date') or 'unknown date'}) "
-                f"for settled amount {parsed.get('amount')} Birr."
-            )
-            payment.save(update_fields=['tx_ref', 'status', 'verified_at', 'verification_note', 'updated_at'])
-        except Exception as verification_error:
-            payment.verification_note = f'Verification failed: {verification_error}'
-            payment.save(update_fields=['verification_note', 'updated_at'])
-            return InitiateEscrowPayment(
-                payment=payment,
-                verified=False,
-                message=str(verification_error),
-            )
-
-        create_notification(
-            recipient=contract.acceptor,
-            actor=user,
-            contract=contract,
-            notification_type=Notification.Type.ESCROW_PAID,
-            title='Escrow funded',
-            message=f'Escrow has been funded via TELEBIRR for "{contract.job_post.title}". You can now start work.',
-        )
-
-        return InitiateEscrowPayment(
-            payment=payment,
-            verified=True,
-            message='Telebirr receipt verified and escrow marked as paid.',
-        )
 
 class RejectJobApplication(graphene.Mutation):
     class Arguments:
@@ -327,6 +299,7 @@ class RejectJobApplication(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @transaction.atomic
     def mutate(cls, root, info, contract_id):
         user = info.context.user
         if user.is_anonymous:
@@ -337,6 +310,10 @@ class RejectJobApplication(graphene.Mutation):
         except Contract.DoesNotExist:
             raise Exception("Contract not found.")
 
+        JobPosting.objects.select_for_update().get(pk=contract.job_post_id)
+        contract.refresh_from_db()
+        if user.pk not in (contract.poster_id, contract.acceptor_id):
+            raise GraphQLError('Only contract parties can cancel an application.')
         if contract.status != Contract.Status.PENDING:
             raise Exception("This contract is not in pending status.")
 
@@ -352,13 +329,14 @@ class confirmJobCompleted(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @transaction.atomic
     def mutate(cls, root, info, contract_id):
         user = info.context.user
         if user.is_anonymous:
             raise Exception("You must be logged in to confirm job completion.")
 
         try:
-            contract = Contract.objects.get(pk=contract_id)
+            contract = Contract.objects.select_for_update().get(pk=contract_id)
         except Contract.DoesNotExist:
             raise Exception("Contract not found.")
 
@@ -390,15 +368,13 @@ class confirmJobCompleted(graphene.Mutation):
                 raise Exception("Only the job poster can confirm completion initiated by the acceptor.")
             contract.status = Contract.Status.COMPLETED
             contract.save()
-            paid_escrow.status = EscrowPayment.Status.RELEASED
-            paid_escrow.save(update_fields=['status', 'updated_at'])
             create_notification(
                 recipient=contract.acceptor,
                 actor=contract.poster,
                 contract=contract,
                 notification_type=Notification.Type.JOB_COMPLETED,
-                title='Escrow released',
-                message=f'Job "{contract.job_post.title}" marked complete. Escrow has been released.',
+                title='Job complete; payout pending',
+                message=f'Job "{contract.job_post.title}" marked complete. Escrow is ready for manual payout by the operator.',
             )
             return confirmJobCompleted(success=True)
             
@@ -408,15 +384,13 @@ class confirmJobCompleted(graphene.Mutation):
                 raise Exception("Only the job acceptor can confirm completion initiated by the poster.")
             contract.status = Contract.Status.COMPLETED
             contract.save()
-            paid_escrow.status = EscrowPayment.Status.RELEASED
-            paid_escrow.save(update_fields=['status', 'updated_at'])
             create_notification(
                 recipient=contract.poster,
                 actor=contract.acceptor,
                 contract=contract,
                 notification_type=Notification.Type.JOB_COMPLETED,
-                title='Escrow released',
-                message=f'Job "{contract.job_post.title}" marked complete. Escrow has been released.',
+                title='Job complete; payout pending',
+                message=f'Job "{contract.job_post.title}" marked complete. Escrow is ready for manual payout by the operator.',
             )
             return confirmJobCompleted(success=True)
             
@@ -572,6 +546,7 @@ class Mutation(graphene.ObjectType):
     RegisterUser = RegisterUser.Field()
     createJobPost = createJobPost.Field()
     editProfile = editProfile.Field()
+    beginFaydaLink = BeginFaydaLink.Field()
     acceptJobPost = acceptJobPost.Field()
     confirmJobContract = ConfirmJobAcceptance.Field()
     initiateEscrowPayment = InitiateEscrowPayment.Field()

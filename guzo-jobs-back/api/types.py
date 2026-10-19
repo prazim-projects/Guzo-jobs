@@ -1,6 +1,13 @@
 import graphene
 
 
+class EscrowRecipientType(graphene.ObjectType):
+    provider = graphene.String()
+    name = graphene.String()
+    account_number = graphene.String()
+    updated_at = graphene.DateTime()
+
+
 class UserType(graphene.ObjectType):
     id = graphene.ID()
     username = graphene.String()
@@ -8,6 +15,18 @@ class UserType(graphene.ObjectType):
     phone_number = graphene.String()
     profile_picture = graphene.String()
     bio = graphene.String()
+    fayda_linked = graphene.Boolean()
+
+    def resolve_email(self, info):
+        user = info.context.user
+        return self.email if user.is_authenticated and (user.pk == self.pk or user.is_staff) else None
+
+    def resolve_phone_number(self, info):
+        user = info.context.user
+        return self.phone_number if user.is_authenticated and (user.pk == self.pk or user.is_staff) else None
+
+    def resolve_fayda_linked(self, info):
+        return hasattr(self, 'fayda_identity')
 
 
 class EscrowPaymentType(graphene.ObjectType):
@@ -51,7 +70,8 @@ class ContractType(graphene.ObjectType):
         return self.acceptor
 
     def resolve_escrow_payments(self, info):
-        return self.escrow_payments.all()
+        user = info.context.user
+        return self.escrow_payments.all() if user.is_authenticated and (user.pk in (self.poster_id, self.acceptor_id) or user.is_staff) else []
 
 
 class ComplaintType(graphene.ObjectType):
@@ -104,4 +124,7 @@ class JobPostingType(graphene.ObjectType):
         return self.user
 
     def resolve_contracts(self, info):
-        return self.contract.all()
+        user = info.context.user
+        if not user.is_authenticated:
+            return []
+        return [contract for contract in self.contract.all() if user.pk in (contract.poster_id, contract.acceptor_id) or user.is_staff]

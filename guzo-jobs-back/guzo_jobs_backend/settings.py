@@ -24,9 +24,9 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG=env('DEBUG')
+DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
 def _env_list(name, default=''):
     return [item.strip() for item in env(name, default=default).split(',') if item.strip()]
@@ -73,6 +73,7 @@ GRAPHENE = {
 
 GRAPHQL_JWT = {
     'JWT_AUTH_HEADER_PREFIX': 'Bearer',
+    'JWT_VERIFY_EXPIRATION': True,
 }
 
 AUTHENTICATION_BACKENDS = [
@@ -83,14 +84,14 @@ AUTHENTICATION_BACKENDS = [
 AUTH_USER_MODEL = 'api.UserProfile'
 
 # Telebirr configuration (read once from environment)
-TELEBIRR_APP_ID = env('TELEBIRR_APP_ID')
-TELEBIRR_APP_KEY = env('TELEBIRR_APP_KEY')
-TELEBIRR_MERCHANT_ID = env('TELEBIRR_MERCHANT_ID')
-TELEBIRR_NOTIFY_URL = env('TELEBIRR_NOTIFY_URL')
-TELEBIRR_RECEIVER_NAME = env('TELEBIRR_RECEIVER_NAME')
-TELEBIRR_RECEIVER_PHONE = env('TELEBIRR_RECEIVER_PHONE')
+TELEBIRR_APP_ID = env('TELEBIRR_APP_ID', default='')
+TELEBIRR_APP_KEY = env('TELEBIRR_APP_KEY', default='')
+TELEBIRR_MERCHANT_ID = env('TELEBIRR_MERCHANT_ID', default='')
+TELEBIRR_NOTIFY_URL = env('TELEBIRR_NOTIFY_URL', default='')
+TELEBIRR_RECEIVER_NAME = env('TELEBIRR_RECEIVER_NAME', default='')
+TELEBIRR_RECEIVER_PHONE = env('TELEBIRR_RECEIVER_PHONE', default='')
 
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_HEADERS = [
     'accept',
     'authorization',
@@ -109,12 +110,18 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^http://192\.168\.\d+\.\d+(:\d+)?$',
     r'^capacitor://localhost$',
     r'^ionic://localhost$',
-]
+] if DEBUG else []
 
 CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS', default='')
 CSRF_COOKIE_HTTPONLY = env.bool('CSRF_COOKIE_HTTPONLY', default=False)
-CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_SAMESITE = None
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = 'Lax'
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+DATA_UPLOAD_MAX_MEMORY_SIZE = 7 * 1024 * 1024
 
 
 ROOT_URLCONF = 'guzo_jobs_backend.urls'
@@ -193,3 +200,15 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@guzojobs.com')
+
+# Register FAYDA_REDIRECT_URI exactly as the callback URL in the Fayda partner portal.
+FAYDA_CLIENT_ID = env('FAYDA_CLIENT_ID', default='')
+FAYDA_PRIVATE_KEY_BASE64 = env('FAYDA_PRIVATE_KEY_BASE64', default='')
+FAYDA_AUTHORIZATION_ENDPOINT = env('FAYDA_AUTHORIZATION_ENDPOINT', default='')
+FAYDA_TOKEN_ENDPOINT = env('FAYDA_TOKEN_ENDPOINT', default='')
+FAYDA_USERINFO_ENDPOINT = env('FAYDA_USERINFO_ENDPOINT', default='')
+FAYDA_JWKS_URI = env('FAYDA_JWKS_URI', default='')
+FAYDA_ISSUER = env('FAYDA_ISSUER', default='')
+FAYDA_REDIRECT_URI = env('FAYDA_REDIRECT_URI', default='')
+FAYDA_FRONTEND_URL = env('FAYDA_FRONTEND_URL', default='http://localhost:5173')
+FAYDA_ANDROID_REDIRECT = env('FAYDA_ANDROID_REDIRECT', default='guzojobs://auth/fayda')
