@@ -1,9 +1,6 @@
 import base64
 import binascii
-import html
 import re
-from decimal import Decimal
-from urllib.request import Request, urlopen
 
 
 def create_notification(recipient, actor, contract, notification_type, title, message):
@@ -167,91 +164,3 @@ def validate_product_image(product_image):
 
 def can_delete_job_post(contract_queryset):
     return not contract_queryset.filter(status__in=['ACCEPTED', 'COMPLETED_BY_ACCEPTOR', 'COMPLETED_BY_POSTER', 'COMPLETED']).exists()
-
-
-def normalize_name(value):
-    return re.sub(r'[^a-z0-9]', '', (value or '').lower())
-
-
-def digits_only(value):
-    return ''.join(ch for ch in str(value or '') if ch.isdigit())
-
-
-def parse_telebirr_receipt_text(receipt_text):
-    compact = re.sub(r'\s+', ' ', html.unescape(receipt_text or '')).strip()
-
-    tx_ref_match = re.search(r'\bDDJ[A-Z0-9]{6,}\b', compact)
-    tx_ref = tx_ref_match.group(0) if tx_ref_match else None
-
-    credited_name_match = re.search(r'Credited Party name\s*(.+?)\s*Credited party account', compact, re.IGNORECASE)
-    credited_name = credited_name_match.group(1).strip() if credited_name_match else None
-
-    credited_account_match = re.search(r'Credited party account no\s*([0-9*]+)', compact, re.IGNORECASE)
-    credited_account = credited_account_match.group(1).strip() if credited_account_match else None
-
-    status_match = re.search(r'transaction status\s*([A-Za-z]+)', compact, re.IGNORECASE)
-    transaction_status = status_match.group(1).strip().upper() if status_match else None
-
-    payment_date_match = re.search(r'(\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2}:\d{2})', compact)
-    payment_date = payment_date_match.group(1) if payment_date_match else None
-
-    amount = None
-    settled_match = re.search(r'Settled Amount\s*([A-Z0-9]+)?\s*(\d{1,8}(?:\.\d{1,2})?)\s*Birr', compact, re.IGNORECASE)
-    if settled_match:
-        amount = Decimal(settled_match.group(2))
-    else:
-        birr_amounts = re.findall(r'(\d{1,8}(?:\.\d{1,2})?)\s*Birr', compact, re.IGNORECASE)
-        if birr_amounts:
-            amount = Decimal(birr_amounts[0])
-
-    return {
-        'tx_ref': tx_ref,
-        'credited_name': credited_name,
-        'credited_account': credited_account,
-        'transaction_status': transaction_status,
-        'payment_date': payment_date,
-        'amount': amount,
-        'raw_excerpt': compact[:1200],
-    }
-
-
-def verify_telebirr_receipt_details(receipt_url, expected_amount, receiver_name, receiver_phone):
-    if not receipt_url:
-        raise Exception('A telebirr receipt URL is required.')
-
-    if not receipt_url.startswith('https://transactioninfo.ethiotelecom.et/receipt/'):
-        raise Exception('Receipt URL must come from transactioninfo.ethiotelecom.et/receipt/.')
-
-    request = Request(receipt_url, headers={'User-Agent': 'travelNotes/1.0'})
-    with urlopen(request, timeout=15) as response:
-        payload = response.read()
-
-    decoded_text = payload.decode('utf-8', errors='ignore')
-    parsed = parse_telebirr_receipt_text(decoded_text)
-
-    if parsed['transaction_status'] != 'COMPLETED':
-        raise Exception('Receipt status is not completed.')
-
-    if parsed['amount'] is None:
-        raise Exception('Could not read settled amount from receipt.')
-
-    if Decimal(parsed['amount']) < Decimal(expected_amount):
-        raise Exception('Settled amount is lower than required escrow amount.')
-
-    if receiver_name:
-        expected = normalize_name(receiver_name)
-        actual = normalize_name(parsed.get('credited_name'))
-        if expected and actual and expected not in actual:
-            raise Exception('Credited party name does not match platform receiver name.')
-
-    if receiver_phone:
-        expected_digits = digits_only(receiver_phone)
-        actual_digits = digits_only(parsed.get('credited_account'))
-        if expected_digits and actual_digits:
-            if not actual_digits.endswith(expected_digits[-4:]):
-                raise Exception('Credited telebirr account does not match configured receiver account.')
-
-    if not parsed.get('tx_ref'):
-        raise Exception('Could not read transaction reference from receipt.')
-
-    return parsed
