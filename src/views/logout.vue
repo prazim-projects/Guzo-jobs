@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+defineOptions({ name: "LogoutPage" });
 import { t } from '@/utils/i18n';
 import { IonPage, IonContent, IonButton, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton } from '@ionic/vue';
 import { useRouter } from 'vue-router';

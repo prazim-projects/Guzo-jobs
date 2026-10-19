@@ -17,6 +17,7 @@
         <p v-if="user.confirmPassword && user.password !== user.confirmPassword" class="form-error" role="alert">{{ t('password_mismatch') }}</p>
         <p v-if="error" class="form-error" role="alert">{{ t(error) }}</p>
         <ion-button expand="block" type="submit" :disabled="busy">{{ t(busy ? 'Working...' : 'Sign Up') }}</ion-button>
+        <ion-button expand="block" fill="outline" type="button" :disabled="busy" @click="handleFayda">Sign up with Fayda</ion-button>
         <p>{{ t('Already have an account?') }} <router-link to="/login">{{ t('Login') }}</router-link></p>
         <ion-button fill="clear" @click="toggleLanguage">{{ t(currentLanguage === 'en' ? 'lang_switch_to_am' : 'lang_switch_to_en') }}</ion-button>
       </form>
@@ -24,6 +25,7 @@
   </ion-page>
 </template>
 <script setup lang="ts">
+defineOptions({ name: "RegisterPage" });
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonInput, IonButton, IonIcon } from '@ionic/vue';
@@ -32,12 +34,20 @@ import { useAuthStore } from '@/stores/userStore';
 import { t, authError, currentLanguage, toggleLanguage } from '@/utils/i18n';
 import { isStrongPassword, suggestPassword } from '@/utils/password';
 import '@/theme/auth.css';
+import { startFayda } from '@/utils/fayda';
 const router = useRouter();
 const store = useAuthStore();
 const user = ref({ username: '', phone_number: '', email: '', password: '', confirmPassword: '' });
 const showPassword = ref(false);
 const busy = ref(false);
 const error = ref('');
+async function handleFayda() {
+  error.value = '';
+  busy.value = true;
+  try { await startFayda(); }
+  catch { error.value = 'Could not start Fayda sign-up.'; }
+  finally { busy.value = false; }
+}
 function generate() {
   user.value.password = suggestPassword();
   user.value.confirmPassword = user.value.password;

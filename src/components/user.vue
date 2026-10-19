@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+defineOptions({ name: "UserList" });
 import { useQuery } from '@vue/apollo-composable';
 import gql from 'graphql-tag';
 

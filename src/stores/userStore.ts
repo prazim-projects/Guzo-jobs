@@ -3,14 +3,36 @@ import { ref } from 'vue'
 import { gql } from '@apollo/client/core'
 import { useApolloClient } from '@vue/apollo-composable'
 import { useRouter } from 'vue-router'
-import { toRaw } from 'vue'
+
 
 export const useAuthStore = defineStore('auth', () => {
-    const token = ref<string | null>(localStorage.getItem('authToken'))
-    const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
-    const isAuthenticated = ref(!!token.value)
+    let savedUser = null
+    let savedToken = localStorage.getItem('authToken')
+    try {
+        savedUser = JSON.parse(localStorage.getItem('user') || 'null')
+        const payload = JSON.parse(atob((savedToken || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+        if (!savedUser?.id || !Number.isFinite(payload.exp) || payload.exp * 1000 <= Date.now()) throw new Error('Expired session')
+    } catch {
+        savedUser = null
+        savedToken = null
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('user')
+    }
+    const token = ref<string | null>(savedToken)
+    const user = ref(savedUser)
+    const isAuthenticated = ref(!!savedToken)
   
     const { client } = useApolloClient()
+
+    function acceptSession(jwtToken: string, userData: Record<string, unknown>) {
+        if (!jwtToken || !userData?.id) throw new Error('Invalid authentication response')
+        token.value = jwtToken
+        user.value = userData
+        localStorage.setItem('authToken', jwtToken)
+        localStorage.setItem('user', JSON.stringify(userData))
+        isAuthenticated.value = true
+        void client.clearStore()
+    }
 
   // Login Mutation
     async function login(username: string, password: string) {
@@ -38,13 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
         const jwtToken = data.tokenAuth.token
         const userData = data.tokenAuth.user
         if (!jwtToken || !userData) throw new Error('invalid_credentials')
-        if (jwtToken) {
-            token.value = jwtToken
-            user.value = userData
-            localStorage.setItem('authToken', jwtToken)
-            localStorage.setItem('user', JSON.stringify(userData)); 
-            isAuthenticated.value = true
-        }
+        acceptSession(jwtToken, userData)
         } catch (error) {
         console.error('Login failed:', error)
         throw error  // show alert
@@ -74,14 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
       const jwtToken = data.RegisterUser.token 
       const userData = data.RegisterUser.user
       if (!jwtToken || !userData) throw new Error('request_failed')
-      if(jwtToken){
-        token.value = jwtToken
-        user.value = userData
-        localStorage.setItem('authToken', jwtToken)
-        localStorage.setItem('user',  JSON.stringify(toRaw(user.value)));
-        isAuthenticated.value = true
-
-      }
+      acceptSession(jwtToken, userData)
     } catch (error) {
       console.error('Register failed:', error)
       throw error
@@ -100,5 +109,5 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/home')
   }
 
-  return { token, user, isAuthenticated, login, register, logout }
+  return { token, user, isAuthenticated, login, register, acceptSession, logout }
 })

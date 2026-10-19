@@ -14,6 +14,7 @@
         </ion-card-header>
 
         <ion-card-content>
+        <form @submit.prevent="handleLogin">
           <ion-item>
             <ion-label position="floating">{{ t("Username") }}</ion-label>
             <ion-input v-model="user.username" type="text" required></ion-input>
@@ -35,13 +36,15 @@
           </ion-item>
 
           <p v-if="loginError" class="form-error" role="alert">{{ t(loginError) }}</p>
-          <ion-button expand="block" @click="handleLogin" :disabled="busy" class="ion-margin-top">{{ t(busy ? 'Working...' : 'Login') }}</ion-button>
+          <ion-button expand="block" type="submit" @click.prevent="handleLogin" :disabled="busy" class="ion-margin-top">{{ t(busy ? 'Working...' : 'Login') }}</ion-button>
+          <ion-button expand="block" fill="outline" :disabled="busy" @click="handleFayda">Sign in with Fayda</ion-button>
           <ion-button expand="block" fill="clear" router-link="/reset-password">{{ t('Forgot password?') }}</ion-button>
           <ion-button expand="block" fill="clear" @click="toggleLanguage">{{ t(currentLanguage === 'en' ? 'lang_switch_to_am' : 'lang_switch_to_en') }}</ion-button>
 
           <p class="ion-text-center ion-margin-top">
             {{ t("Don't have an account?") }} <router-link to="/signup">{{ t("Sign Up") }}</router-link>
           </p>
+        </form>
         </ion-card-content>
       </ion-card>
     </ion-content>
@@ -62,6 +65,7 @@
 </template>
 
 <script lang="ts" setup>
+defineOptions({ name: "LoginPage" });
 import { ref } from 'vue';
 import { t, authError, currentLanguage, toggleLanguage } from '@/utils/i18n';
 import '@/theme/auth.css';
@@ -85,6 +89,7 @@ import {
 } from '@ionic/vue';
 import { eyeOffOutline, eyeOutline } from 'ionicons/icons';
 import { useAuthStore } from '@/stores/userStore';
+import { startFayda } from '@/utils/fayda';
 
 const router = useRouter();
 const userStore = useAuthStore();
@@ -97,6 +102,18 @@ const user = ref({
 const showPassword = ref(false);
 const loginError = ref('');
 const busy = ref(false);
+
+const handleFayda = async () => {
+  loginError.value = '';
+  busy.value = true;
+  try {
+    await startFayda();
+  } catch {
+    loginError.value = 'Could not start Fayda sign-in.';
+  } finally {
+    busy.value = false;
+  }
+};
 
 
 const handleLogin = async () => {

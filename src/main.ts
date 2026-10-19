@@ -1,90 +1,10 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router';
-import { createPinia} from 'pinia';
-import { IonicVue } from '@ionic/vue';
-import { defineCustomElements } from '@ionic/pwa-elements/loader'
-// Apollo Client
-import { DefaultApolloClient } from '@vue/apollo-composable';
-import ApolloClient from './apollo-client';
+import { Capacitor } from '@capacitor/core';
 
-defineCustomElements(window);
-
-/* Core CSS required for Ionic components to work properly */
-import '@ionic/vue/css/core.css';
-
-/* Basic CSS for apps built with Ionic */
-import '@ionic/vue/css/normalize.css';
-import '@ionic/vue/css/structure.css';
-import '@ionic/vue/css/typography.css';
-
-import { addIcons } from 'ionicons';
-import { chatbubble, compass,  share, contract, home, add, remove, pin, heart, settings, homeOutline, mapOutline, personAddOutline, personCircleOutline, addCircleOutline, logInOutline, alertCircleOutline, locationOutline, timeOutline, logOutOutline, pencil, callOutline, call, briefcaseOutline, checkmarkCircle, rocketOutline, shieldCheckmarkOutline, searchOutline, arrowForward, airplaneOutline, helpCircleOutline } from 'ionicons/icons';
-addIcons({
-  compass,
-  add,
-  remove,
-  home,
-  pin,
-  checkmarkCircle,
-  rocketOutline,
-  shieldCheckmarkOutline,
-  searchOutline,
-  arrowForward,
-  airplaneOutline,
-  contract,
-  heart,
-  chatbubble,
-  share,
-  homeOutline,
-  mapOutline,
-  personAddOutline,
-  personCircleOutline,
-  addCircleOutline,
-  logInOutline,
-  pencil,
-  alertCircleOutline, 
-  helpCircleOutline,
-  settings,
-  locationOutline,
-  timeOutline,
-  logOutOutline,
-  callOutline,
-  call,
-  briefcaseOutline
-})
-
-/* Optional CSS utils that can be commented out */
-import '@ionic/vue/css/padding.css';
-import '@ionic/vue/css/float-elements.css';
-import '@ionic/vue/css/text-alignment.css';
-import '@ionic/vue/css/text-transformation.css';
-import '@ionic/vue/css/flex-utils.css';
-import '@ionic/vue/css/display.css';
-import 'leaflet/dist/leaflet.css';
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
-
-import '@ionic/vue/css/palettes/dark.always.css'; 
-/* @import '@ionic/vue/css/palettes/dark.class.css'; */
-// import '@ionic/vue/css/palettes/dark.system.css';
-
-/* Theme variables */
-import './theme/variables.css';
-
-
-const pinia = createPinia();
-
-const app = createApp(App)
-  .use(IonicVue)
-  .use(router).use(pinia)
-
-app.provide(DefaultApolloClient, ApolloClient);
-
-router.isReady().then(() => {
-  app.mount('#app');
-});
+// The welcome screen does not need Ionic, Apollo, app icons or native plugins.
+const route = location.hash.slice(1).split('?')[0];
+const bypassOnboarding = ['/reset-password', '/fayda/callback'].includes(route);
+if (!Capacitor.isNativePlatform() && !bypassOnboarding && localStorage.getItem('onboardingCompleted') !== 'true') {
+  void import('./onboarding').then(({ mountOnboarding }) => mountOnboarding());
+} else {
+  void import('./bootstrap');
+}
